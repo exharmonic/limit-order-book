@@ -12,3 +12,15 @@ struct Order {
     uint32_t quantity;
     Side side;
 };
+
+struct OrderNode {
+    Order order;
+    uint32_t prevOrderIdx = 0;
+    uint32_t nextOrderIdx = 0;
+};
+
+struct PriceLevel {
+    uint32_t volume;
+    uint32_t headOrderIdx;
+    uint32_t tailOrderIdx;
+};

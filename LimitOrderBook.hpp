@@ -1,14 +1,22 @@
 #pragma once
-#include <map>
 #include "Order.hpp"
-#include <list>
+#include "MemoryPool.hpp"
+#include <array>
 
+constexpr size_t MAX_PRICE = 100000; 
+constexpr size_t MAX_ORDERS = 1000000;
 
 class LimitOrderBook {
     private:
-        std::map<uint64_t, std::list<Order>, std::greater<uint64_t>> bids;
-        std::map<uint64_t, std::list<Order>, std::less<uint64_t>> asks;
+        MemoryPool orderPool;
+        uint32_t bestAsk = MAX_PRICE;
+        uint32_t bestBid = 0;
+        std::array<PriceLevel, MAX_PRICE> bids;
+        std::array<PriceLevel, MAX_PRICE> asks;
+
     public:
+        LimitOrderBook() : orderPool(MAX_ORDERS) {};
+
         void addOrder(Order order);
         void printBook();
 
