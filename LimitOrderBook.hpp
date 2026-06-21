@@ -13,11 +13,13 @@ class LimitOrderBook {
         uint32_t bestBid = 0;
         std::array<PriceLevel, MAX_PRICE> bids;
         std::array<PriceLevel, MAX_PRICE> asks;
+        std::array<uint32_t, MAX_ORDERS> orderMap = {0};
 
     public:
         LimitOrderBook() : orderPool(MAX_ORDERS) {};
 
         void addOrder(Order order);
+        void cancelOrder(uint32_t orderID);
         void printBook();
 
 };

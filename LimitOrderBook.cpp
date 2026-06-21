@@ -16,7 +16,7 @@ void LimitOrderBook::addOrder(Order order) {
                 restingOrder.quantity -= fillQuantity;
                 level.volume -= fillQuantity;
 
-                std::cout<<"[EXECUTION] "<<fillQuantity<<" shares matched at ₹"<<bestAsk<<" (RestingID: "<<restingOrder.orderID<<")"<<" | Incoming ID: "<<order.orderID<<"\n";
+                //std::cout<<"[EXECUTION] "<<fillQuantity<<" shares matched at ₹"<<bestAsk<<" (RestingID: "<<restingOrder.orderID<<")"<<" | Incoming ID: "<<order.orderID<<"\n";
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
@@ -28,6 +28,7 @@ void LimitOrderBook::addOrder(Order order) {
                     else {
                         level.tailOrderIdx = 0;
                     }
+                    orderMap[restingOrder.orderID] = 0; // We assume zero poolIdx as the integer "nullptr" equivalent.
                     orderPool.deallocate(currIdx);
                 }
                 currIdx = nextIdx;
@@ -37,7 +38,7 @@ void LimitOrderBook::addOrder(Order order) {
             }
         }
 
-        if (order.quantity>0) {
+        if (order.quantity>0) { // BUY Order is not fully satisfied, i.e. bestAsk > order.price. So, add the order to the bids array.
             uint32_t newOrderIdx = orderPool.allocate();
             if (newOrderIdx == 0) {
                 std::cerr<<"CRITICAL ERROR: Order Pool Exhausted!\n";
@@ -45,6 +46,8 @@ void LimitOrderBook::addOrder(Order order) {
 
             OrderNode& newNode = orderPool.get(newOrderIdx);
             newNode.order = order;
+            orderMap[order.orderID] = newOrderIdx; // Update orderMap to look for this order in O(1) time.
+
             newNode.nextOrderIdx = 0;
 
             PriceLevel& level = bids[order.price];
@@ -67,7 +70,7 @@ void LimitOrderBook::addOrder(Order order) {
                 bestBid = order.price;
             }
 
-            std::cout<<"[ADDED] BUY Order "<<order.orderID<<" resting "<<order.quantity<<" shares at ₹"<<order.price<<"\n";
+            //std::cout<<"[ADDED] BUY Order "<<order.orderID<<" resting "<<order.quantity<<" shares at ₹"<<order.price<<"\n";
         }
     }
     else {
@@ -84,7 +87,7 @@ void LimitOrderBook::addOrder(Order order) {
                 restingOrder.quantity -= fillQuantity;
                 level.volume -= fillQuantity;
 
-                std::cout<<"[EXECUTION] "<<fillQuantity<<" shares matched at ₹"<<bestBid<<" (RestingID: "<<restingOrder.orderID<<")"<<" | Incoming ID: "<<order.orderID<<"\n";
+                //std::cout<<"[EXECUTION] "<<fillQuantity<<" shares matched at ₹"<<bestBid<<" (RestingID: "<<restingOrder.orderID<<")"<<" | Incoming ID: "<<order.orderID<<"\n";
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
@@ -96,6 +99,8 @@ void LimitOrderBook::addOrder(Order order) {
                     else {
                         level.tailOrderIdx = 0;
                     }
+
+                    orderMap[restingOrder.orderID] = 0; // Set its poolIdx as zero.
                     orderPool.deallocate(currIdx);
                 }
                 currIdx = nextIdx;
@@ -114,6 +119,7 @@ void LimitOrderBook::addOrder(Order order) {
 
             OrderNode& newNode = orderPool.get(newOrderIdx);
             newNode.order = order;
+            orderMap[order.orderID] = newOrderIdx;
             newNode.nextOrderIdx = 0;
 
             PriceLevel& level = asks[order.price];
@@ -136,26 +142,75 @@ void LimitOrderBook::addOrder(Order order) {
                 bestAsk = order.price;
             }
 
-            std::cout<<"[ADDED] SELL Order "<<order.orderID<<" resting "<<order.quantity<<" shares at ₹"<<order.price<<"\n";
+            //std::cout<<"[ADDED] SELL Order "<<order.orderID<<" resting "<<order.quantity<<" shares at ₹"<<order.price<<"\n";
         }
     }
 };
 
+void LimitOrderBook::cancelOrder(uint32_t orderID) {
+    uint32_t poolIdx = orderMap[orderID];
+
+    if (poolIdx == 0) return;
+
+    OrderNode& delNode = orderPool.get(poolIdx);
+    Order& delOrder = delNode.order;
+
+    uint32_t prevNodeIdx = delNode.prevOrderIdx;
+    uint32_t nextNodeIdx = delNode.nextOrderIdx;
+    PriceLevel& level = delOrder.side == Side::BUY ? bids[delOrder.price] : asks[delOrder.price];
+    
+    if (prevNodeIdx != 0) { // Previous node exists.
+        orderPool.get(prevNodeIdx).nextOrderIdx = nextNodeIdx;
+    }
+    else { // First node of the level. Set the next node as the head of the level.
+        level.headOrderIdx = nextNodeIdx;
+    }
+
+    if (nextNodeIdx != 0) { // Next node exists. Can safely grab nextNodeIdx
+        orderPool.get(nextNodeIdx).prevOrderIdx =prevNodeIdx; 
+    }
+    else { // Last node of the level. Set the previous node as the tail of the level.
+        level.tailOrderIdx = prevNodeIdx;
+    }
+
+    level.volume-=delOrder.quantity;
+    orderPool.deallocate(poolIdx);
+    orderMap[orderID] = 0; // We assume zero poolIdx as the integer "nullptr" equivalent.
+
+    // If the level just emptied out completely due to this cancellation, update our global tracking anchors
+    if (level.headOrderIdx == 0) {
+
+        if (delOrder.side == Side::BUY && delOrder.price == bestBid) {
+            while (bestBid > 0 && bids[bestBid].headOrderIdx == 0) {
+                bestBid--;
+            }
+        } else if (delOrder.side == Side::SELL && delOrder.price == bestAsk) {
+            while (bestAsk < MAX_PRICE && asks[bestAsk].headOrderIdx == 0) {
+                bestAsk++;
+            }
+        }
+        
+    }
+
+    //std::cout << "[CANCELLED] Order " << orderID << " cancelled.\n"; // Order cancelled in O(1) time.
+
+}
+
 void LimitOrderBook::printBook() {
-    std::cout << "\n----------LIMIT ORDER BOOK----------\n";
+    //std::cout << "\n----------LIMIT ORDER BOOK----------\n";
 
     for (uint32_t i = 500; i > 0; --i) {
         uint32_t price = bestAsk + i;
         if (price < MAX_PRICE && asks[price].headOrderIdx != 0) {
-            std::cout << "ASK | ₹" << price << " | " << asks[price].volume << " shares\n";
+            //std::cout << "ASK | ₹" << price << " | " << asks[price].volume << " shares\n";
         }
     }
     
     if (bestAsk < MAX_PRICE && asks[bestAsk].headOrderIdx != 0) {
-        std::cout << "ASK | ₹" << bestAsk << " | " << asks[bestAsk].volume << " shares\n";
+        //std::cout << "ASK | ₹" << bestAsk << " | " << asks[bestAsk].volume << " shares\n";
     }
 
-    std::cout << "------------------------------------\n";
+    //std::cout << "------------------------------------\n";
     
     for (uint32_t i = 0; i <= 500; ++i) {
         if (bestBid < i) break;
@@ -163,8 +218,8 @@ void LimitOrderBook::printBook() {
         uint32_t price = bestBid - i;
         
         if (bids[price].headOrderIdx != 0) {
-            std::cout << "BID | ₹" << price << " | " << bids[price].volume << " shares\n";
+            //std::cout << "BID | ₹" << price << " | " << bids[price].volume << " shares\n";
         }
     }
-    std::cout << "------------------------------------\n\n";
+    //std::cout << "------------------------------------\n\n";
 }
