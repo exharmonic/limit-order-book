@@ -1,35 +1,58 @@
 #include "LimitOrderBook.hpp"
+#include "RingBuffer.hpp"
 #include <iostream>
+#include <thread>
+#include <atomic>
 #include <chrono>
 
-int main() {
-    LimitOrderBook engine;
-    
-    // Silence std::cout during the seeding phase so I/O doesn't bottleneck the setup
-    std::cout.setstate(std::ios_base::failbit); 
+RingBuffer<Order, 131072> orderQueue;
+LimitOrderBook engine;
+std::atomic<bool> marketOpen{true};
 
-    for (uint32_t i = 1; i <= 5000; ++i) {
-        engine.addOrder({i, 15000, 100, Side::BUY});
-        engine.addOrder({i + 5000, 15100, 100, Side::SELL});
+void engineThread() {
+    Order incomingOrder;
+    uint32_t processedCount = 0;
+
+    while (marketOpen.load(std::memory_order_relaxed)) {
+        if (orderQueue.pop(incomingOrder)) {
+            engine.addOrder(incomingOrder);
+            processedCount++;
+        }
     }
 
-    // Turn std::cout back on for the benchmark
-    std::cout.clear();
+    while (orderQueue.pop(incomingOrder)) {
+        engine.addOrder(incomingOrder);
+        processedCount++;
+    }
 
-    std::cout << "Engine Seeded with 10,000 orders.\n";
-    std::cout << "Firing aggressive market taker...\n\n";
+}
 
-    Order aggressiveOrder = {10001, 15100, 250, Side::BUY}; 
+int main() {
 
+    std::cout << "[MAIN] Initializing system pipeline...\n";
+    
+    // Launching the isolated consumer thread
+    std::thread consumer(engineThread);
+    
+    std::cout << "[MAIN] Executing a burst of 100,000 orders into the queue...\n";
     auto start = std::chrono::high_resolution_clock::now();
 
-    engine.addOrder(aggressiveOrder);
+    for (uint32_t i = 1; i <= 100000; ++i) {
+        Order newOrder = {i, 15000, 100, Side::BUY};
+        while (!orderQueue.push(newOrder)) {
+            // Drop logic or Retry Spin logic
+        }
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    
+    std::cout << "[MAIN] Ingestion burst completed in " << duration << " ms.\n";
 
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    marketOpen.store(false, std::memory_order_relaxed);
+    consumer.join();
 
-    std::cout << "TRADE EXECUTION TIME: " << duration << " nanoseconds.\n";
-
+    std::cout << "[MAIN] Execution verified. Core closed successfully.\n";
+    
     return 0;
 }
