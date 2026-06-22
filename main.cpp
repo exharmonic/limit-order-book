@@ -1,5 +1,6 @@
 #include "LimitOrderBook.hpp"
 #include "RingBuffer.hpp"
+#include "CSVParser.hpp"
 #include <iostream>
 #include <thread>
 #include <atomic>
@@ -34,17 +35,12 @@ int main() {
     // Launching the isolated consumer thread
     std::thread consumer(engineThread);
     
-    std::cout << "[MAIN] Executing a burst of 100,000 orders into the queue...\n";
+    std::cout << "[MAIN] Executing a burst of 1,000,000 orders into the queue...\n";
+
     auto start = std::chrono::high_resolution_clock::now();
-
-    for (uint32_t i = 1; i <= 100000; ++i) {
-        Order newOrder = {i, 15000, 100, Side::BUY};
-        while (!orderQueue.push(newOrder)) {
-            // Drop logic or Retry Spin logic
-        }
-    }
-
+    CSVParser::parseAndPush("data/orders.csv", orderQueue);
     auto end = std::chrono::high_resolution_clock::now();
+
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     
     std::cout << "[MAIN] Ingestion burst completed in " << duration << " ms.\n";
