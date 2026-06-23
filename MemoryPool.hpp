@@ -5,11 +5,13 @@
 class MemoryPool {
     private:
         std::vector<OrderNode> pool;
+        OrderNode* poolPtr;
         std::vector<uint32_t> freeList;
 
     public:
         MemoryPool(size_t capacity) {
             pool.resize(capacity);
+            poolPtr = pool.data();
             freeList.reserve(capacity);
 
             for (size_t i = capacity-1; i > 0; i--) {
@@ -29,6 +31,6 @@ class MemoryPool {
         }
 
         OrderNode& get(uint32_t idx) {
-            return pool[idx];
+            return poolPtr[idx];
         } 
 };

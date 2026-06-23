@@ -22,6 +22,9 @@ void engineThread() {
             engine.addOrder(incomingOrder);
             processedCount++;
         }
+        else {
+            _mm_pause();
+        }
     }
 
     while (orderQueue.pop(incomingOrder)) {
@@ -32,7 +35,7 @@ void engineThread() {
 }
 
 int main() {
-    std::string filepath = "data/orders.csv";
+    std::string filepath = "data/sample.itch";
     std::string_view view = filepath;
     std::cout << "[MAIN] Initializing system pipeline...\n";
     

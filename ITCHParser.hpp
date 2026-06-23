@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <immintrin.h>
 #include "RingBuffer.hpp"
 #include "Order.hpp"
 
@@ -117,7 +118,7 @@ class ITCHParser {
                         order.side = (msg->buySellIndicator == 'B')? Side::BUY : Side::SELL;
 
                         while (!buffer.push(order)) {
-                            // Drop logic or Retry Spin logic
+                            _mm_pause();
                         }
                         break;
                     }

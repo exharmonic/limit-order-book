@@ -10,7 +10,7 @@ LimitOrderBook::LimitOrderBook() : orderPool(MAX_ORDERS) {
     }
 }
 void LimitOrderBook::addOrder(Order order) {
-    if (order.price >= MAX_PRICE) {
+    if (order.price >= MAX_PRICE)[[unlikely]] {
         std::cerr << "[WARNING] Order " << order.orderID << " price (" << order.price << ") exceeds MAX_PRICE. Dropping.\n";
         return; 
     }
@@ -18,7 +18,7 @@ void LimitOrderBook::addOrder(Order order) {
         while (order.quantity > 0 && bestAsk < MAX_PRICE && bestAsk <= order.price) {
             PriceLevel& level = asks[bestAsk];
             uint32_t currIdx = level.headOrderIdx;
-            while (currIdx!=0 && order.quantity>0) {
+            while (currIdx!=0 && order.quantity>0)[[likely]] {
                 OrderNode& restingNode = orderPool.get(currIdx);
                 Order& restingOrder = restingNode.order;
 
@@ -32,7 +32,7 @@ void LimitOrderBook::addOrder(Order order) {
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
-                if (restingOrder.quantity == 0) {
+                if (restingOrder.quantity == 0)[[unlikely]]  {
                     level.headOrderIdx = nextIdx;
                     if (nextIdx != 0) {
                         orderPool.get(nextIdx).prevOrderIdx = 0;
@@ -52,7 +52,7 @@ void LimitOrderBook::addOrder(Order order) {
 
         if (order.quantity>0) { // BUY Order is not fully satisfied, i.e. bestAsk > order.price. So, add the order to the bids array.
             uint32_t newOrderIdx = orderPool.allocate();
-            if (newOrderIdx == 0) {
+            if (newOrderIdx == 0)[[unlikely]]  {
                 std::cerr<<"CRITICAL ERROR: Order Pool Exhausted!\n";
                 return;
             }
@@ -90,7 +90,7 @@ void LimitOrderBook::addOrder(Order order) {
         while (order.quantity > 0 && bestBid > 0 && bestBid >= order.price) {
             PriceLevel& level = bids[bestBid];
             uint32_t currIdx = level.headOrderIdx;
-            while (currIdx!=0 && order.quantity>0) {
+            while (currIdx!=0 && order.quantity>0)[[likely]] {
                 OrderNode& restingNode = orderPool.get(currIdx);
                 Order& restingOrder = restingNode.order;
 
@@ -104,7 +104,7 @@ void LimitOrderBook::addOrder(Order order) {
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
-                if (restingOrder.quantity == 0) {
+                if (restingOrder.quantity == 0)[[unlikely]] {
                     level.headOrderIdx = nextIdx;
                     if (nextIdx != 0) {
                         orderPool.get(nextIdx).prevOrderIdx = 0;
@@ -164,7 +164,7 @@ void LimitOrderBook::addOrder(Order order) {
 void LimitOrderBook::cancelOrder(uint32_t orderID) {
     uint32_t poolIdx = orderMap[orderID];
 
-    if (poolIdx == 0) return;
+    if (poolIdx == 0)[[unlikely]] return;
 
     OrderNode& delNode = orderPool.get(poolIdx);
     Order& delOrder = delNode.order;

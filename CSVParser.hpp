@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <immintrin.h>
 #include "RingBuffer.hpp"
 #include "Order.hpp"
 
@@ -65,7 +66,7 @@ class CSVParser {
                 if (ptr< end) ptr++;
 
                 while (!buffer.push(order)) {
-                    // Drop logic or Retry Spin logic
+                    _mm_pause();
                 }
             }
             munmap((void*)data, length);
