@@ -11,16 +11,16 @@ class CSVParser {
 
 
     public:
-        static inline uint32_t fastParseInt(const char*& ptr) {
+        static inline uint32_t fastParseInt(const char*& ptr, const char* end) {
             uint32_t val = 0;
-            while (*ptr>='0' && *ptr<='9') {
+            while (ptr<end && *ptr>='0' && *ptr<='9') {
                 val = val*10+(*ptr-'0');
                 ptr++;
             }
             return val;
         } ;
 
-        static void parseAndPush(const char* filepath, RingBuffer<Order, 131072>& buffer) {
+        static void parseAndPush(const char* filepath, RingBuffer<Order, 1048576>& buffer) {
 
             int fd = open(filepath, O_RDONLY); // open file using the fcntl::open instead of the fstream::open (slower)
             if (fd == -1) {
@@ -38,6 +38,7 @@ class CSVParser {
 
             if (data == MAP_FAILED) {
                 std::cerr<<"[NETWORK] Failed to map memory.\n";
+                return;
             }
 
             const char* ptr = data;
@@ -53,11 +54,11 @@ class CSVParser {
             while (ptr<end) {
                 Order order;
 
-                order.orderID = fastParseInt(ptr);
+                order.orderID = fastParseInt(ptr, end);
                 if (*ptr == ',') ptr++;
-                order.price = fastParseInt(ptr);
+                order.price = fastParseInt(ptr, end);
                 if (*ptr == ',') ptr++;
-                order.quantity = fastParseInt(ptr);
+                order.quantity = fastParseInt(ptr, end);
                 if (*ptr == ',') ptr++;
                 order.side = (*ptr == '0')? Side::BUY : Side::SELL;
                 while (ptr<end && *ptr!='\n') ptr++;

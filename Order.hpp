@@ -6,7 +6,7 @@ enum class Side: uint8_t {
     SELL = 1
 };
 
-struct Order {
+struct __attribute__((packed)) Order {
     uint64_t orderID;
     uint32_t price;
     uint32_t quantity;

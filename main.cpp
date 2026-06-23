@@ -1,12 +1,15 @@
 #include "LimitOrderBook.hpp"
 #include "RingBuffer.hpp"
 #include "CSVParser.hpp"
+#include "ITCHParser.hpp"
 #include <iostream>
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include<string>
+#include<string_view>
 
-RingBuffer<Order, 131072> orderQueue;
+RingBuffer<Order, 1048576> orderQueue;
 LimitOrderBook engine;
 std::atomic<bool> marketOpen{true};
 
@@ -29,7 +32,8 @@ void engineThread() {
 }
 
 int main() {
-
+    std::string filepath = "data/orders.csv";
+    std::string_view view = filepath;
     std::cout << "[MAIN] Initializing system pipeline...\n";
     
     // Launching the isolated consumer thread
@@ -38,7 +42,18 @@ int main() {
     std::cout << "[MAIN] Executing a burst of 1,000,000 orders into the queue...\n";
 
     auto start = std::chrono::high_resolution_clock::now();
-    CSVParser::parseAndPush("data/orders.csv", orderQueue);
+    if (view.ends_with(".csv")) {
+        // std::cout << "[NETWORK] Routing to CSV mmap pipeline...\n";
+        CSVParser::parseAndPush(filepath.c_str(), orderQueue);
+    } 
+    else if (view.ends_with(".itch") || view.ends_with(".pcap")) {
+        // std::cout << "[NETWORK] Routing to Binary ITCH mmap pipeline...\n";
+        ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
+    } 
+    else {
+        std::cerr << "[SYSTEM] Unsupported file format.\n";
+        return 1;
+}
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

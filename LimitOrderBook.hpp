@@ -4,7 +4,7 @@
 #include <array>
 
 constexpr size_t MAX_PRICE = 100000; 
-constexpr size_t MAX_ORDERS = 1000000;
+constexpr size_t MAX_ORDERS = 1100001;
 
 class LimitOrderBook {
     private:
@@ -16,7 +16,7 @@ class LimitOrderBook {
         std::array<uint32_t, MAX_ORDERS> orderMap = {0};
 
     public:
-        LimitOrderBook() : orderPool(MAX_ORDERS) {};
+        LimitOrderBook();
 
         void addOrder(Order order);
         void cancelOrder(uint32_t orderID);

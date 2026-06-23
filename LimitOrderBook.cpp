@@ -1,9 +1,21 @@
 #include "LimitOrderBook.hpp" 
 #include <iostream> 
 
+LimitOrderBook::LimitOrderBook() : orderPool(MAX_ORDERS) {
+    for (auto& level : bids) {
+        level = {0, 0, 0}; 
+    }
+    for (auto& level : asks) {
+        level = {0, 0, 0};
+    }
+}
 void LimitOrderBook::addOrder(Order order) {
+    if (order.price >= MAX_PRICE) {
+        std::cerr << "[WARNING] Order " << order.orderID << " price (" << order.price << ") exceeds MAX_PRICE. Dropping.\n";
+        return; 
+    }
     if (order.side == Side::BUY) {
-        while (order.quantity>0 && bestAsk<=order.price) {
+        while (order.quantity > 0 && bestAsk < MAX_PRICE && bestAsk <= order.price) {
             PriceLevel& level = asks[bestAsk];
             uint32_t currIdx = level.headOrderIdx;
             while (currIdx!=0 && order.quantity>0) {
@@ -42,6 +54,7 @@ void LimitOrderBook::addOrder(Order order) {
             uint32_t newOrderIdx = orderPool.allocate();
             if (newOrderIdx == 0) {
                 std::cerr<<"CRITICAL ERROR: Order Pool Exhausted!\n";
+                return;
             }
 
             OrderNode& newNode = orderPool.get(newOrderIdx);
@@ -74,7 +87,7 @@ void LimitOrderBook::addOrder(Order order) {
         }
     }
     else {
-        while (order.quantity>0 && bestBid>=order.price) {
+        while (order.quantity > 0 && bestBid > 0 && bestBid >= order.price) {
             PriceLevel& level = bids[bestBid];
             uint32_t currIdx = level.headOrderIdx;
             while (currIdx!=0 && order.quantity>0) {
@@ -115,6 +128,7 @@ void LimitOrderBook::addOrder(Order order) {
             uint32_t newOrderIdx = orderPool.allocate();
             if (newOrderIdx == 0) {
                 std::cerr<<"CRITICAL ERROR: Order Pool Exhausted!\n";
+                return;
             }
 
             OrderNode& newNode = orderPool.get(newOrderIdx);
