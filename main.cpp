@@ -8,12 +8,23 @@
 #include <chrono>
 #include<string>
 #include<string_view>
+#include <pthread.h>
+#include <sched.h>
 
 RingBuffer<Order, 1048576> orderQueue;
 LimitOrderBook engine;
 std::atomic<bool> marketOpen{true};
 
 void engineThread() {
+
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(4, &cpuset); // Pin strictly to CPU Core 4
+
+    pthread_t current_thread = pthread_self();
+    if (pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset) != 0) {
+        std::cerr << "[SYSTEM] Warning: Failed to set thread affinity for Engine Thread.\n";
+    }
     Order incomingOrder;
     uint32_t processedCount = 0;
 
@@ -35,6 +46,14 @@ void engineThread() {
 }
 
 int main() {
+    
+    cpu_set_t cpuset_main;
+    CPU_ZERO(&cpuset_main);
+    CPU_SET(2, &cpuset_main); // Pin Main to CPU Core 2
+
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset_main) != 0) {
+        std::cerr << "[SYSTEM] Warning: Failed to set thread affinity for Main Thread.\n";
+    }
     std::string filepath = "data/sample.itch";
     std::string_view view = filepath;
     std::cout << "[MAIN] Initializing system pipeline...\n";
