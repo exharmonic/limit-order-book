@@ -6,14 +6,14 @@ enum class Side: uint8_t {
     SELL = 1
 };
 
-struct __attribute__((packed)) Order {
+struct Order {
     uint64_t orderID;
     uint32_t price;
     uint32_t quantity;
     Side side;
 };
 
-struct OrderNode {
+struct alignas(32) OrderNode {
     Order order;
     uint32_t prevOrderIdx = 0;
     uint32_t nextOrderIdx = 0;

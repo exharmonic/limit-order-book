@@ -30,7 +30,11 @@ void engineThread() {
 
     while (marketOpen.load(std::memory_order_relaxed)) {
         if (orderQueue.pop(incomingOrder)) {
-            engine.addOrder(incomingOrder);
+            if (incomingOrder.quantity > 0) {
+                engine.addOrder(incomingOrder);
+            } else {
+                engine.cancelOrder(incomingOrder.orderID);
+            }
             processedCount++;
         }
         else {
@@ -39,7 +43,11 @@ void engineThread() {
     }
 
     while (orderQueue.pop(incomingOrder)) {
-        engine.addOrder(incomingOrder);
+        if (incomingOrder.quantity > 0) {
+            engine.addOrder(incomingOrder);
+        } else {
+            engine.cancelOrder(incomingOrder.orderID);
+        }
         processedCount++;
     }
 
@@ -82,7 +90,7 @@ int main() {
     
     std::cout << "[MAIN] Ingestion burst completed in " << duration << " ms.\n";
 
-    marketOpen.store(false, std::memory_order_relaxed);
+    marketOpen.store(false, std::memory_order_release);
     consumer.join();
 
     std::cout << "[MAIN] Execution verified. Core closed successfully.\n";

@@ -52,6 +52,14 @@ struct ITCHAddOrderAttributionMessage { // Type 'F'
     char attribution[4];
 };
 
+struct ITCHOrderDeleteMessage {
+    char messageType;
+    uint16_t stockLocate;
+    uint16_t trackingNumber;
+    uint8_t timestamp[6];
+    uint64_t orderRef;
+};
+
 #pragma pack(pop)
 
 class ITCHParser {
@@ -78,6 +86,7 @@ class ITCHParser {
             size_t length = sb.st_size; // Size of files in bytes
             
             const char* data = static_cast<const char*>(mmap(nullptr, length, PROT_READ, MAP_PRIVATE, fd, 0));
+            madvise((void*)data, length, MADV_SEQUENTIAL);
 
             if (data == MAP_FAILED) {
                 std::cerr<<"[NETWORK] Failed to map memory.\n";
@@ -122,7 +131,19 @@ class ITCHParser {
                         }
                         break;
                     }
-                    default:
+                    case 'D': { // Delete Order
+                        const auto* msg = reinterpret_cast<const ITCHOrderDeleteMessage*>(ptr);
+
+                        Order cancelSignal;
+                        cancelSignal.orderID = bswap64(msg->orderRef);
+                        cancelSignal.quantity = 0; // <-- The Magic Signal
+
+                        while (!buffer.push(cancelSignal)) {
+                            _mm_pause(); // Spin if the queue is full
+                        }
+                        break;
+                    }
+                                        default:
                         break;
                     }
                 ptr += msgLength;   

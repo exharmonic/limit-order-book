@@ -1,6 +1,28 @@
 #include "LimitOrderBook.hpp" 
 #include <iostream> 
 
+uint32_t LimitOrderBook::findNextBestBid(uint32_t currentBid) {
+    int startWord = currentBid / 64;
+    for (int i = startWord; i >= 0; --i) {
+        if (bidWords[i] != 0) {
+            int highestBit = 63 - __builtin_clzll(bidWords[i]);
+            return (i * 64) + highestBit;
+        }
+    }
+    return 0; 
+}
+
+uint32_t LimitOrderBook::findNextBestAsk(uint32_t currentAsk) {
+    int startWord = currentAsk / 64;
+    for (int i = startWord; i < BIT_WORDS; ++i) {
+        if (askWords[i] != 0) {
+            int lowestBit = __builtin_ctzll(askWords[i]);
+            return (i * 64) + lowestBit;
+        }
+    }
+    return MAX_PRICE; 
+}
+
 LimitOrderBook::LimitOrderBook() : orderPool(MAX_ORDERS) {
     for (auto& level : bids) {
         level = {0, 0, 0}; 
@@ -32,6 +54,7 @@ void LimitOrderBook::addOrder(Order order) {
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
+
                 if (restingOrder.quantity == 0)[[unlikely]]  {
                     level.headOrderIdx = nextIdx;
                     if (nextIdx != 0) {
@@ -45,8 +68,10 @@ void LimitOrderBook::addOrder(Order order) {
                 }
                 currIdx = nextIdx;
             }
-            if (level.headOrderIdx == 0) {
-                bestAsk++;
+            if (asks[bestAsk].headOrderIdx == 0) {
+                bestAsk = findNextBestAsk(bestAsk);
+                
+                if (bestAsk == MAX_PRICE) break;
             }
         }
 
@@ -69,6 +94,7 @@ void LimitOrderBook::addOrder(Order order) {
                 level.headOrderIdx = newOrderIdx;
                 level.tailOrderIdx = newOrderIdx;
                 newNode.prevOrderIdx = 0;
+                bidWords[order.price / 64] |= (1ULL << (order.price % 64));
             }
             else {
                 OrderNode& oldTail = orderPool.get(level.tailOrderIdx);
@@ -119,8 +145,9 @@ void LimitOrderBook::addOrder(Order order) {
                 currIdx = nextIdx;
             }
             if (level.headOrderIdx == 0) {
-                if (bestBid>0) bestBid--;
-                else break;
+                bestBid = findNextBestBid(bestBid);
+                
+                if (bestBid == 0) break;
             }
         }
 
@@ -142,6 +169,7 @@ void LimitOrderBook::addOrder(Order order) {
                 level.headOrderIdx = newOrderIdx;
                 level.tailOrderIdx = newOrderIdx;
                 newNode.prevOrderIdx = 0;
+                askWords[order.price / 64] |= (1ULL << (order.price % 64));
             }
             else {
                 OrderNode& oldTail = orderPool.get(level.tailOrderIdx);
@@ -193,18 +221,12 @@ void LimitOrderBook::cancelOrder(uint32_t orderID) {
 
     // If the level just emptied out completely due to this cancellation, update our global tracking anchors
     if (level.headOrderIdx == 0) {
-
-        if (delOrder.side == Side::BUY && delOrder.price == bestBid) {
-            while (bestBid > 0 && bids[bestBid].headOrderIdx == 0) {
-                bestBid--;
-            }
-        } else if (delOrder.side == Side::SELL && delOrder.price == bestAsk) {
-            while (bestAsk < MAX_PRICE && asks[bestAsk].headOrderIdx == 0) {
-                bestAsk++;
-            }
-        }
-        
+    if (delOrder.side == Side::BUY) {
+        if (delOrder.price == bestBid) bestBid = findNextBestBid(bestBid);
+    } else {
+        if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk);
     }
+}
 
     //std::cout << "[CANCELLED] Order " << orderID << " cancelled.\n"; // Order cancelled in O(1) time.
 

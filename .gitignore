@@ -1,8 +1,10 @@
 *.o
 *.so
 *.a
-*out
-*exe
+*.out
+*.exe
 engine
+engine_bench
 .vscode/
 data/
+build/

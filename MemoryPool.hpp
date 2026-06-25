@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <sys/mman.h>
 #include "Order.hpp"
 
 class MemoryPool {
@@ -11,6 +12,7 @@ class MemoryPool {
     public:
         MemoryPool(size_t capacity) {
             pool.resize(capacity);
+            madvise(pool.data(), capacity * sizeof(OrderNode), MADV_HUGEPAGE);
             poolPtr = pool.data();
             freeList.reserve(capacity);
 

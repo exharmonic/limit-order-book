@@ -5,6 +5,7 @@
 
 constexpr size_t MAX_PRICE = 100000; 
 constexpr size_t MAX_ORDERS = 1100001;
+constexpr int BIT_WORDS = (MAX_PRICE / 64) + 1;
 
 class LimitOrderBook {
     private:
@@ -14,6 +15,11 @@ class LimitOrderBook {
         std::array<PriceLevel, MAX_PRICE> bids;
         std::array<PriceLevel, MAX_PRICE> asks;
         std::array<uint32_t, MAX_ORDERS> orderMap = {0};
+        uint64_t bidWords[BIT_WORDS] = {0};
+        uint64_t askWords[BIT_WORDS] = {0};
+
+        uint32_t findNextBestBid(uint32_t currentBid);
+        uint32_t findNextBestAsk(uint32_t currentAsk);
 
     public:
         LimitOrderBook();
