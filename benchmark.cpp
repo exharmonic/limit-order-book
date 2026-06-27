@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+#include "BaselineOrderBook.hpp"
 #include "LimitOrderBook.hpp"
 #include <algorithm>
 #include <cmath>
@@ -25,6 +26,44 @@ auto p99 = [](const std::vector<double>& v) -> double {
     return copy[index];
 };
 
+static void BM_BaselineScaling(benchmark::State& state) {
+    BaselineOrderBook book;
+    uint32_t startingPrice = 99999;; 
+    uint64_t orderId = 1;
+    
+    // Pre-fill the book with distinct price levels based on benchmark range
+    for (int i = 0; i < state.range(0); i++) {
+        book.addBid(startingPrice - i, orderId++, 100);
+    }
+
+    uint32_t targetPrice = startingPrice - (state.range(0) / 2);
+
+    for (auto _ : state) {
+        book.addBid(targetPrice, orderId++, 100);
+    }
+}
+BENCHMARK(BM_BaselineScaling)->RangeMultiplier(10)->Range(100, 100000)->Repetitions(20)->ComputeStatistics("p50", p50)->ComputeStatistics("p90", p90)->ComputeStatistics("p99", p99)->ReportAggregatesOnly(true);
+
+static void BM_EngineScaling(benchmark::State& state) {
+    LimitOrderBook engine;
+    uint32_t startingPrice = 99999;;
+    uint64_t orderId = 1;
+
+    // Pre-fill the engine with distinct price levels based on benchmark range
+    for (int i = 0; i < state.range(0); i++) {
+        engine.addOrder({orderId++, startingPrice - i, 100, Side::BUY});
+    }
+
+    uint32_t targetPrice = startingPrice - (state.range(0) / 2);
+    Order deepOrder = {200000, targetPrice, 100, Side::BUY};
+
+    for (auto _ : state) {
+        engine.addOrder(deepOrder);
+        engine.cancelOrder(200000); 
+    }
+}
+BENCHMARK(BM_EngineScaling)->RangeMultiplier(10)->Range(100, 100000)->Repetitions(20)->ComputeStatistics("p50", p50)->ComputeStatistics("p90", p90)->ComputeStatistics("p99", p99)->ReportAggregatesOnly(true);
+
 static void BM_PingPong(benchmark::State& state) {
     LimitOrderBook engine;
 
@@ -35,27 +74,6 @@ static void BM_PingPong(benchmark::State& state) {
 }
 BENCHMARK(BM_PingPong)->Repetitions(20)->ComputeStatistics("p50", p50)->ComputeStatistics("p90", p90)->ComputeStatistics("p99", p99)->ReportAggregatesOnly(true);
 
-class DeepBookFixture : public benchmark::Fixture {
-public:
-    LimitOrderBook engine;
-    void SetUp(const benchmark::State& state) override {
-        // Pre-fill the book with 10,000 resting buy orders before the timer starts
-        for (int i = 1; i <= 10000; ++i) {
-            engine.addOrder({(uint64_t)i, 14000, 100, Side::BUY});
-        }
-    }
-};
-
-BENCHMARK_F(DeepBookFixture, BM_DeepInsert)(benchmark::State& state) {
-    Order deepOrder = {99999, 13000, 100, Side::BUY};
-    for (auto _ : state) {
-        // Add an order far from the spread, then immediately cancel it to preserve memory
-        engine.addOrder(deepOrder);
-        engine.cancelOrder(99999);
-    }
-}
-BENCHMARK_REGISTER_F(DeepBookFixture, BM_DeepInsert)->Repetitions(20)->ComputeStatistics("p50", p50)->ComputeStatistics("p90", p90)->ComputeStatistics("p99", p99)->ReportAggregatesOnly(true);
-
 static void BM_LevelSweep(benchmark::State& state) {
     LimitOrderBook engine;
     Order massiveSell = {999, 15000, 1000, Side::SELL};
@@ -64,7 +82,7 @@ static void BM_LevelSweep(benchmark::State& state) {
         // Pause timer: Set up the 100 resting orders
         state.PauseTiming();
         for (int i = 1; i <= 100; ++i) {
-            engine.addOrder({(uint64_t)i, 15000, 10, Side::BUY}); // Total resting volume: 1000
+            engine.addOrder({(uint64_t)i, 15000, 10, Side::BUY}); 
         }
         state.ResumeTiming();
 
