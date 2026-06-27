@@ -73,11 +73,9 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
     if (view.ends_with(".csv")) {
-        // std::cout << "[NETWORK] Routing to CSV mmap pipeline...\n";
         CSVParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
     else if (view.ends_with(".itch") || view.ends_with(".pcap")) {
-        // std::cout << "[NETWORK] Routing to Binary ITCH mmap pipeline...\n";
         ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
     else {

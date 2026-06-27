@@ -50,8 +50,6 @@ void LimitOrderBook::addOrder(Order order) {
                 restingOrder.quantity -= fillQuantity;
                 level.volume -= fillQuantity;
 
-                //std::cout<<"[EXECUTION] "<<fillQuantity<<" shares matched at ₹"<<bestAsk<<" (RestingID: "<<restingOrder.orderID<<")"<<" | Incoming ID: "<<order.orderID<<"\n";
-
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
 
@@ -108,8 +106,6 @@ void LimitOrderBook::addOrder(Order order) {
             if (order.price>bestBid) {
                 bestBid = order.price;
             }
-
-            //std::cout<<"[ADDED] BUY Order "<<order.orderID<<" resting "<<order.quantity<<" shares at ₹"<<order.price<<"\n";
         }
     }
     else {
@@ -125,8 +121,6 @@ void LimitOrderBook::addOrder(Order order) {
                 order.quantity -= fillQuantity;
                 restingOrder.quantity -= fillQuantity;
                 level.volume -= fillQuantity;
-
-                //std::cout<<"[EXECUTION] "<<fillQuantity<<" shares matched at ₹"<<bestBid<<" (RestingID: "<<restingOrder.orderID<<")"<<" | Incoming ID: "<<order.orderID<<"\n";
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
@@ -183,8 +177,6 @@ void LimitOrderBook::addOrder(Order order) {
             if (order.price<bestAsk) {
                 bestAsk = order.price;
             }
-
-            //std::cout<<"[ADDED] SELL Order "<<order.orderID<<" resting "<<order.quantity<<" shares at ₹"<<order.price<<"\n";
         }
     }
 };
@@ -224,31 +216,26 @@ void LimitOrderBook::cancelOrder(uint32_t orderID) {
         if (delOrder.side == Side::BUY) {
         bidWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
         if (delOrder.price == bestBid) bestBid = findNextBestBid(bestBid - 1);
-    } else {
-        askWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
-        if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk + 1);
+        } else {
+            askWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
+            if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk + 1);
+        }
     }
 }
 
-    //std::cout << "[CANCELLED] Order " << orderID << " cancelled.\n"; // Order cancelled in O(1) time.
-
-}
-
 void LimitOrderBook::printBook() {
-    //std::cout << "\n----------LIMIT ORDER BOOK----------\n";
-
     for (uint32_t i = 500; i > 0; --i) {
         uint32_t price = bestAsk + i;
         if (price < MAX_PRICE && asks[price].headOrderIdx != 0) {
-            //std::cout << "ASK | ₹" << price << " | " << asks[price].volume << " shares\n";
+            std::cout << "ASK | ₹" << price << " | " << asks[price].volume << " shares\n";
         }
     }
     
     if (bestAsk < MAX_PRICE && asks[bestAsk].headOrderIdx != 0) {
-        //std::cout << "ASK | ₹" << bestAsk << " | " << asks[bestAsk].volume << " shares\n";
+        std::cout << "ASK | ₹" << bestAsk << " | " << asks[bestAsk].volume << " shares\n";
     }
 
-    //std::cout << "------------------------------------\n";
+    std::cout << "------------------------------------\n";
     
     for (uint32_t i = 0; i <= 500; ++i) {
         if (bestBid < i) break;
@@ -256,8 +243,8 @@ void LimitOrderBook::printBook() {
         uint32_t price = bestBid - i;
         
         if (bids[price].headOrderIdx != 0) {
-            //std::cout << "BID | ₹" << price << " | " << bids[price].volume << " shares\n";
+            std::cout << "BID | ₹" << price << " | " << bids[price].volume << " shares\n";
         }
     }
-    //std::cout << "------------------------------------\n\n";
+    std::cout << "------------------------------------\n\n";
 }

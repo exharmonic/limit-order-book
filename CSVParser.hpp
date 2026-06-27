@@ -23,7 +23,7 @@ class CSVParser {
 
         static void parseAndPush(const char* filepath, RingBuffer<Order, 1048576>& buffer) {
 
-            int fd = open(filepath, O_RDONLY); // open file using the fcntl::open instead of the fstream::open (slower)
+            int fd = open(filepath, O_RDONLY); // Open file using the fcntl::open instead of the fstream::open (slower)
             if (fd == -1) {
                 std::cerr<<"[SYSTEM] Failed to open the dataset.\n";
                 return;
@@ -49,8 +49,6 @@ class CSVParser {
             while (ptr<end && *ptr!='\n') ptr++; 
             // Safely step over the '\n' so the pointer rests on the first actual byte of data.
             if (ptr<end) ptr++;
-
-            // std::cout << "[NETWORK] Memory Mapping successful. Ingesting raw byte stream...\n";
 
             while (ptr<end) {
                 Order order;
