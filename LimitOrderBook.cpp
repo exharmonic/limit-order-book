@@ -221,10 +221,12 @@ void LimitOrderBook::cancelOrder(uint32_t orderID) {
 
     // If the level just emptied out completely due to this cancellation, update our global tracking anchors
     if (level.headOrderIdx == 0) {
-    if (delOrder.side == Side::BUY) {
-        if (delOrder.price == bestBid) bestBid = findNextBestBid(bestBid);
+        if (delOrder.side == Side::BUY) {
+        bidWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
+        if (delOrder.price == bestBid) bestBid = findNextBestBid(bestBid - 1);
     } else {
-        if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk);
+        askWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
+        if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk + 1);
     }
 }
 
