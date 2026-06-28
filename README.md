@@ -100,14 +100,14 @@ Google Benchmark is fetched automatically at configure time.
 Generate test data:
 
 ```bash
-python3 scripts/itch_generator.py   # → data/sample.itch
-python3 scripts/csv_generator.py    # → data/orders.csv
+python3 scripts/itch_generator.py   # creates data/sample.itch
+python3 scripts/csv_generator.py    # creates data/orders.csv
 ```
 
 Run the ingestion engine (processes `data/sample.itch` by default):
 
 ```bash
-g++ -O3 -std=c++20 -march=native -mtune=native -flto main.cpp LimitOrderBook.cpp -o engine -pthread && ./engine
+./engine_main
 ```
 
 Run benchmarks:
