@@ -67,7 +67,8 @@ void LimitOrderBook::addOrder(Order order) {
                 currIdx = nextIdx;
             }
             if (asks[bestAsk].headOrderIdx == 0) {
-                bestAsk = findNextBestAsk(bestAsk);
+                askWords[bestAsk / 64] &= ~(1ULL << (bestAsk % 64));
+                bestAsk = findNextBestAsk(bestAsk + 1);
                 
                 if (bestAsk == MAX_PRICE) break;
             }
@@ -139,7 +140,8 @@ void LimitOrderBook::addOrder(Order order) {
                 currIdx = nextIdx;
             }
             if (level.headOrderIdx == 0) {
-                bestBid = findNextBestBid(bestBid);
+                bidWords[bestBid / 64] &= ~(1ULL << (bestBid % 64));
+                bestBid = findNextBestBid(bestBid - 1);
                 
                 if (bestBid == 0) break;
             }
@@ -214,8 +216,8 @@ void LimitOrderBook::cancelOrder(uint32_t orderID) {
     // If the level just emptied out completely due to this cancellation, update our global tracking anchors
     if (level.headOrderIdx == 0) {
         if (delOrder.side == Side::BUY) {
-        bidWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
-        if (delOrder.price == bestBid) bestBid = findNextBestBid(bestBid - 1);
+            bidWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
+            if (delOrder.price == bestBid) bestBid = (bestBid > 0) ? findNextBestBid(bestBid - 1) : 0;
         } else {
             askWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
             if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk + 1);
