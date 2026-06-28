@@ -16,7 +16,8 @@ FetchContent_Declare(
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googlebenchmark)
 
-add_executable(engine_bench benchmark.cpp LimitOrderBook.cpp
-  BaselineOrderBook.hpp)
-
+add_executable(engine_bench benchmark.cpp LimitOrderBook.cpp BaselineOrderBook.hpp)
 target_link_libraries(engine_bench benchmark::benchmark pthread)
+
+add_executable(engine_main main.cpp LimitOrderBook.cpp)
+target_link_libraries(engine_main pthread)

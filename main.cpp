@@ -10,6 +10,7 @@
 #include<string_view>
 #include <pthread.h>
 #include <sched.h>
+#include <fstream>
 
 RingBuffer<Order, 1048576> orderQueue;
 LimitOrderBook engine;
@@ -53,7 +54,7 @@ void engineThread() {
 
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     
     cpu_set_t cpuset_main;
     CPU_ZERO(&cpuset_main);
@@ -62,7 +63,18 @@ int main() {
     if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset_main) != 0) {
         std::cerr << "[SYSTEM] Warning: Failed to set thread affinity for Main Thread.\n";
     }
-    std::string filepath = "data/sample.itch";
+    std::string filepath = "../data/sample.itch"; // Default relative to build/ dir
+    if (argc > 1) {
+        filepath = argv[1];
+    }
+    std::ifstream fileCheck(filepath, std::ios::binary);
+    if (!fileCheck.is_open()) {
+        std::cerr << "[CRITICAL ERROR] Failed to locate market data file at: " << filepath << "\n";
+        std::cerr << "Usage: ./engine_main <path_to_data_file>\n";
+        return 1;
+    }
+    fileCheck.close();
+
     std::string_view view = filepath;
     std::cout << "[MAIN] Initializing system pipeline...\n";
     
@@ -80,16 +92,17 @@ int main() {
     } 
     else {
         std::cerr << "[SYSTEM] Unsupported file format.\n";
+        marketOpen.store(false, std::memory_order_release);
+        consumer.join();
         return 1;
-}
+    }
+    marketOpen.store(false, std::memory_order_release);
+    consumer.join();
     auto end = std::chrono::high_resolution_clock::now();
-
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     
     std::cout << "[MAIN] Ingestion burst completed in " << duration << " ms.\n";
 
-    marketOpen.store(false, std::memory_order_release);
-    consumer.join();
 
     std::cout << "[MAIN] Execution verified. Core closed successfully.\n";
     
