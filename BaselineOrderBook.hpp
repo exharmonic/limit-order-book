@@ -46,4 +46,16 @@ public:
             }
         }
     }
+
+    void cancelOrder(uint32_t price, uint64_t orderId, bool isBuy) {
+        if (isBuy) {
+            auto& orderList = bids[price];
+            orderList.remove_if([orderId](const BaselineOrder& o) { return o.orderId == orderId; });
+            if (orderList.empty()) bids.erase(price);
+        } else {
+            auto& orderList = asks[price];
+            orderList.remove_if([orderId](const BaselineOrder& o) { return o.orderId == orderId; });
+            if (orderList.empty()) asks.erase(price);
+        }
+    }
 };

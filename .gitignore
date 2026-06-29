@@ -5,6 +5,12 @@
 *.exe
 engine
 engine_bench
+engine_main
 .vscode/
 data/
 build/
+perf.data
+perf.data.old
+out.perf
+out.folded
+flamegraph/
