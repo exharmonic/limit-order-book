@@ -146,11 +146,12 @@ That's about 4.18 ns per node swept, with very low variance (~0.45% CV) — the 
  
 ### Flame graphs
  
-**Baseline**: `BaselineOrderBook::~BaselineOrderBook` shows up as its own distinct frame at **25.93%** of total samples — the STL teardown cost is large enough to be clearly visible on its own, not hidden inside other frames. The two `std::_Rb_tree::_M_erase` call sites (cancellation and level cleanup) together account for roughly a third of all samples, and malloc-family frames (`malloc`, `_int_malloc`, `_int_free`, `cfree`, `operator new`) are scattered throughout rather than concentrated in one place.
+**Baseline**: The systemic overhead of dynamic memory and standard library containers is clearly visible across the entire process. On the left, the object teardown (`BaselineOrderBook::~BaselineOrderBook`) forms a massive tower dominating a large portion of the samples, heavily burdened by `std::_Rb_tree` node deallocations (`cfree`, `_int_free`). On the right, during the actual matching phase (`engineThread`), the hot path is continuously interrupted by dynamic memory requests, with `operator new` and `malloc` clearly visible at the top of the execution stack.
  
 ![Flame graph of baseline engine showing rb-tree and destructor overhead](docs/baseline_flamegraph.svg "Baseline flame graph — std::map/std::list dominate the call stack")
  
-**Optimized**: `LimitOrderBook::addOrder` alone accounts for **50%** of all samples, and the engine thread as a whole (`engineThread`) for **75%** — the remaining 25% is the parser/main thread. There isn't a single malloc, free, or allocator frame anywhere in the graph.
+**Optimized**: Capturing the unfiltered process beautifully illustrates the multi-threaded architecture. The workload is cleanly divided into three distinct columns: `engineThread` (left), `loggerThread` (center), and `parserThread` (right). 
+Crucially, the `engineThread`'s hot path (`LimitOrderBook::addOrder`) is completely flat—there is not a single `malloc`, `free`, or allocator frame present. Furthermore, the heavy STL and I/O overhead (`std::ostream`) is visibly corralled entirely within the `loggerThread`, proving that asynchronous trade reporting never stalls the core matching engine.
  
 ![Flame graph of optimized engine showing addOrder and engineThread dominating](docs/optimised_flamegraph.svg "Optimized flame graph — no allocator frames in the hot path")
  
@@ -183,8 +184,6 @@ perf script -i perf.data | ../flamegraph/stackcollapse-perf.pl | ../flamegraph/f
 | Total instructions (Ir) | 671,071,498 | 180,177,611 | **3.72x fewer** |
  
 Baseline breakdown — allocator-related functions (`_int_malloc`, `_int_free`, `malloc`, `free`, `alloc_perturb`) account for **54.4%** of all instructions. The optimized build has no allocator frames in its top functions at all; `LimitOrderBook::addOrder` (**56.3%**) dominates, with `main` (**21.1%**, the parser thread) and `engineThread` (**14.1%**, the dispatch loop) making up most of the rest.
- 
-Note the ratio dropped from an earlier 4.16x to 3.72x fewer — the optimized build now does more total work per run than it did before the market-order and fill-queue changes (180.2M instructions vs. the earlier 161.6M), since every match now also pushes a `FillEvent` and every order now runs the `price == 0` market-order check. The baseline's instruction count is essentially unchanged (671.1M vs. 671.7M previously), since none of these changes touch `BaselineOrderBook`.
 
 ### Cachegrind: cache simulation (D1 / LL misses)
  
