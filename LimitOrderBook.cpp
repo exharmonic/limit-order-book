@@ -32,8 +32,12 @@ LimitOrderBook::LimitOrderBook() : orderPool(MAX_ORDERS) {
     }
 }
 void LimitOrderBook::addOrder(Order order) {
-    if (order.price >= MAX_PRICE)[[unlikely]] {
-        std::cerr << "[WARNING] Order " << order.orderID << " price (" << order.price << ") exceeds MAX_PRICE. Dropping.\n";
+    if (order.price >= MAX_PRICE || order.price == 0)[[unlikely]] {
+        if (order.price == 0) {
+            std::cerr<<"[WARNING] Limit Order " <<order.orderID<<" has price 0. Dropping.\n";
+        } else {
+            std::cerr<<"[WARNING] Order " <<order.orderID<<" price (" <<order.price<< ") exceeds MAX_PRICE. Dropping.\n";
+        }
         return; 
     }
     if (order.side == Side::BUY) {
@@ -49,6 +53,10 @@ void LimitOrderBook::addOrder(Order order) {
                 order.quantity -= fillQuantity;
                 restingOrder.quantity -= fillQuantity;
                 level.volume -= fillQuantity;
+
+                if (!fillQueue.push({restingOrder.orderID, order.orderID, bestAsk, fillQuantity, order.side})) {
+                    ++droppedFillCount;
+                }
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
@@ -122,6 +130,10 @@ void LimitOrderBook::addOrder(Order order) {
                 order.quantity -= fillQuantity;
                 restingOrder.quantity -= fillQuantity;
                 level.volume -= fillQuantity;
+
+                if (!fillQueue.push({restingOrder.orderID, order.orderID, bestBid, fillQuantity, order.side})) {
+                    ++droppedFillCount;
+                }
 
                 uint32_t nextIdx = restingNode.nextOrderIdx;
 
@@ -221,6 +233,92 @@ void LimitOrderBook::cancelOrder(uint32_t orderID) {
         } else {
             askWords[delOrder.price / 64] &= ~(1ULL << (delOrder.price % 64));
             if (delOrder.price == bestAsk) bestAsk = findNextBestAsk(bestAsk + 1);
+        }
+    }
+}
+
+void LimitOrderBook::addMarketOrder(Order order) {
+    if (order.side == Side::BUY) {
+        // Market Buy: Sweep the asks from bestAsk upwards
+        while (order.quantity > 0 && bestAsk < MAX_PRICE) {
+            PriceLevel& level = asks[bestAsk];
+            uint32_t currIdx = level.headOrderIdx;
+            
+            while (currIdx != 0 && order.quantity > 0) [[likely]] {
+                OrderNode& restingNode = orderPool.get(currIdx);
+                Order& restingOrder = restingNode.order;
+
+                uint32_t fillQuantity = std::min(order.quantity, restingOrder.quantity);
+                
+                order.quantity -= fillQuantity;
+                restingOrder.quantity -= fillQuantity;
+                level.volume -= fillQuantity;
+
+                if (!fillQueue.push({restingOrder.orderID, order.orderID, bestAsk, fillQuantity, order.side})) {
+                    ++droppedFillCount;
+                }
+
+                uint32_t nextIdx = restingNode.nextOrderIdx;
+
+                // The resting order was completely filled
+                if (restingOrder.quantity == 0) [[unlikely]] {
+                    level.headOrderIdx = nextIdx;
+                    if (nextIdx != 0) {
+                        orderPool.get(nextIdx).prevOrderIdx = 0;
+                    } else {
+                        level.tailOrderIdx = 0;
+                    }
+                    orderMap[restingOrder.orderID] = 0; 
+                    orderPool.deallocate(currIdx);
+                }
+                currIdx = nextIdx;
+            }
+            
+            if (asks[bestAsk].headOrderIdx == 0) {
+                askWords[bestAsk / 64] &= ~(1ULL << (bestAsk % 64));
+                bestAsk = findNextBestAsk(bestAsk + 1);
+                if (bestAsk == MAX_PRICE) break; // No more liquidity
+            }
+        }
+    } else {
+        while (order.quantity > 0 && bestBid > 0) {
+            PriceLevel& level = bids[bestBid];
+            uint32_t currIdx = level.headOrderIdx;
+            
+            while (currIdx != 0 && order.quantity > 0) [[likely]] {
+                OrderNode& restingNode = orderPool.get(currIdx);
+                Order& restingOrder = restingNode.order;
+
+                uint32_t fillQuantity = std::min(order.quantity, restingOrder.quantity);
+                
+                order.quantity -= fillQuantity;
+                restingOrder.quantity -= fillQuantity;
+                level.volume -= fillQuantity;
+
+                if (!fillQueue.push({restingOrder.orderID, order.orderID, bestBid, fillQuantity, order.side})) {
+                    ++droppedFillCount;
+                }
+
+                uint32_t nextIdx = restingNode.nextOrderIdx;
+
+                if (restingOrder.quantity == 0) [[unlikely]] {
+                    level.headOrderIdx = nextIdx;
+                    if (nextIdx != 0) {
+                        orderPool.get(nextIdx).prevOrderIdx = 0;
+                    } else {
+                        level.tailOrderIdx = 0;
+                    }
+                    orderMap[restingOrder.orderID] = 0; 
+                    orderPool.deallocate(currIdx);
+                }
+                currIdx = nextIdx;
+            }
+            
+            if (bids[bestBid].headOrderIdx == 0) {
+                bidWords[bestBid / 64] &= ~(1ULL << (bestBid % 64));
+                bestBid = findNextBestBid(bestBid - 1);
+                if (bestBid == 0) break; // No more liquidity
+            }
         }
     }
 }

@@ -32,7 +32,11 @@ void engineThread() {
     while (marketOpen.load(std::memory_order_relaxed)) {
         if (orderQueue.pop(incomingOrder)) {
             if (incomingOrder.quantity > 0) {
-                engine.addOrder(incomingOrder);
+                if (incomingOrder.price == 0) {
+                    engine.addMarketOrder(incomingOrder);
+                } else {
+            engine.addOrder(incomingOrder);
+                }
             } else {
                 engine.cancelOrder(incomingOrder.orderID);
             }
