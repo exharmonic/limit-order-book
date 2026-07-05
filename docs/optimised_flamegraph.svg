@@ -431,48 +431,32 @@
 <text id="matched" x="1090.00" y="165" > </text>
 <g id="frames">
 <g >
-<title>engine_main (40,404,040 samples, 100.00%)</title><rect x="10.0" y="117" width="1180.0" height="15.0" fill="rgb(210,25,6)" rx="2" ry="2" />
-<text  x="13.00" y="127.5" >engine_main</text>
+<title>engineThread (45,045,045 samples, 100.00%)</title><rect x="10.0" y="53" width="1180.0" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="13.00" y="63.5" >engineThread</text>
 </g>
 <g >
-<title>LimitOrderBook::addOrder (20,202,020 samples, 50.00%)</title><rect x="600.0" y="37" width="590.0" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
-<text  x="603.00" y="47.5" >LimitOrderBook::addOrder</text>
+<title>start_thread (45,045,045 samples, 100.00%)</title><rect x="10.0" y="85" width="1180.0" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="13.00" y="95.5" >start_thread</text>
 </g>
 <g >
-<title>__libc_start_call_main (10,101,010 samples, 25.00%)</title><rect x="10.0" y="69" width="295.0" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
-<text  x="13.00" y="79.5" >__libc_start_call_main</text>
+<title>engineThread (45,045,045 samples, 100.00%)</title><rect x="10.0" y="117" width="1180.0" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="13.00" y="127.5" >engineThread</text>
 </g>
 <g >
-<title>all (40,404,040 samples, 100%)</title><rect x="10.0" y="133" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<title>all (45,045,045 samples, 100%)</title><rect x="10.0" y="133" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
 <text  x="13.00" y="143.5" ></text>
 </g>
 <g >
-<title>clone3 (30,303,030 samples, 75.00%)</title><rect x="305.0" y="101" width="885.0" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
-<text  x="308.00" y="111.5" >clone3</text>
+<title>LimitOrderBook::addOrder (38,038,038 samples, 84.44%)</title><rect x="193.6" y="37" width="996.4" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="196.56" y="47.5" >LimitOrderBook::addOrder</text>
 </g>
 <g >
-<title>start_thread (30,303,030 samples, 75.00%)</title><rect x="305.0" y="85" width="885.0" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
-<text  x="308.00" y="95.5" >start_thread</text>
+<title>clone3 (45,045,045 samples, 100.00%)</title><rect x="10.0" y="101" width="1180.0" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="13.00" y="111.5" >clone3</text>
 </g>
 <g >
-<title>main (10,101,010 samples, 25.00%)</title><rect x="10.0" y="53" width="295.0" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
-<text  x="13.00" y="63.5" >main</text>
-</g>
-<g >
-<title>_start (10,101,010 samples, 25.00%)</title><rect x="10.0" y="101" width="295.0" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
-<text  x="13.00" y="111.5" >_start</text>
-</g>
-<g >
-<title>[libstdc++.so.6.0.33] (30,303,030 samples, 75.00%)</title><rect x="305.0" y="69" width="885.0" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
-<text  x="308.00" y="79.5" >[libstdc++.so.6.0.33]</text>
-</g>
-<g >
-<title>__libc_start_main@@GLIBC_2.34 (10,101,010 samples, 25.00%)</title><rect x="10.0" y="85" width="295.0" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
-<text  x="13.00" y="95.5" >__libc_start_main@@GLIBC_2.34</text>
-</g>
-<g >
-<title>engineThread (30,303,030 samples, 75.00%)</title><rect x="305.0" y="53" width="885.0" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
-<text  x="308.00" y="63.5" >engineThread</text>
+<title>[libstdc++.so.6.0.33] (45,045,045 samples, 100.00%)</title><rect x="10.0" y="69" width="1180.0" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="13.00" y="79.5" >[libstdc++.so.6.0.33]</text>
 </g>
 </g>
 </svg>

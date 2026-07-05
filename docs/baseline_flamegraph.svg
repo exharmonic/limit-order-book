@@ -431,108 +431,124 @@
 <text id="matched" x="1090.00" y="245" > </text>
 <g id="frames">
 <g >
-<title>operator new (10,101,010 samples, 3.70%)</title><rect x="1058.9" y="101" width="43.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
-<text  x="1061.89" y="111.5" >oper..</text>
+<title>std::_Rb_tree&lt;unsigned int, std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt;, std::_Select1st&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt;, std::greater&lt;unsigned int&gt;, std::allocator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; &gt;::_M_erase (14,014,014 samples, 5.17%)</title><rect x="192.9" y="69" width="60.9" height="15.0" fill="rgb(248,200,48)" rx="2" ry="2" />
+<text  x="195.88" y="79.5" >std::_..</text>
 </g>
 <g >
-<title>clone3 (191,919,190 samples, 70.37%)</title><rect x="359.6" y="181" width="830.4" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
-<text  x="362.63" y="191.5" >clone3</text>
-</g>
-<g >
-<title>_int_malloc (10,101,010 samples, 3.70%)</title><rect x="1015.2" y="85" width="43.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
-<text  x="1018.19" y="95.5" >_int..</text>
-</g>
-<g >
-<title>malloc (10,101,010 samples, 3.70%)</title><rect x="1015.2" y="101" width="43.7" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
-<text  x="1018.19" y="111.5" >malloc</text>
-</g>
-<g >
-<title>start_thread (191,919,190 samples, 70.37%)</title><rect x="359.6" y="165" width="830.4" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
-<text  x="362.63" y="175.5" >start_thread</text>
-</g>
-<g >
-<title>__libc_start_main@@GLIBC_2.34 (80,808,080 samples, 29.63%)</title><rect x="10.0" y="165" width="349.6" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
-<text  x="13.00" y="175.5" >__libc_start_main@@GLIBC_2.34</text>
-</g>
-<g >
-<title>engine_baseline (272,727,270 samples, 100.00%)</title><rect x="10.0" y="197" width="1180.0" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
-<text  x="13.00" y="207.5" >engine_baseline</text>
-</g>
-<g >
-<title>main (10,101,010 samples, 3.70%)</title><rect x="315.9" y="133" width="43.7" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
-<text  x="318.93" y="143.5" >main</text>
-</g>
-<g >
-<title>std::_Rb_tree&lt;unsigned int, std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt;, std::_Select1st&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt;, std::greater&lt;unsigned int&gt;, std::allocator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; &gt;::_M_erase (70,707,070 samples, 25.93%)</title><rect x="10.0" y="85" width="305.9" height="15.0" fill="rgb(248,200,48)" rx="2" ry="2" />
-<text  x="13.00" y="95.5" >std::_Rb_tree&lt;unsigned int, std::pair&lt;uns..</text>
-</g>
-<g >
-<title>std::_Rb_tree_iterator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; std::_Rb_tree&lt;unsigned int, std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt;, std::_Select1st&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt;, std::greater&lt;unsigned int&gt;, std::allocator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; &gt;::_M_emplace_hint_unique&lt;std::piecewise_construct_t const&amp;, std::tuple&lt;unsigned int const&amp;&gt;, std::tuple&lt;&gt; &gt; (10,101,010 samples, 3.70%)</title><rect x="1058.9" y="117" width="43.7" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
-<text  x="1061.89" y="127.5" >std:..</text>
-</g>
-<g >
-<title>__libc_start_call_main (80,808,080 samples, 29.63%)</title><rect x="10.0" y="149" width="349.6" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
-<text  x="13.00" y="159.5" >__libc_start_call_main</text>
-</g>
-<g >
-<title>cfree@GLIBC_2.2.5 (10,101,010 samples, 3.70%)</title><rect x="272.2" y="53" width="43.7" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
-<text  x="275.22" y="63.5" >cfre..</text>
-</g>
-<g >
-<title>_int_free (20,202,020 samples, 7.41%)</title><rect x="141.1" y="53" width="87.4" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
-<text  x="144.11" y="63.5" >_int_free</text>
-</g>
-<g >
-<title>__run_exit_handlers (70,707,070 samples, 25.93%)</title><rect x="10.0" y="117" width="305.9" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
-<text  x="13.00" y="127.5" >__run_exit_handlers</text>
-</g>
-<g >
-<title>[libc.so.6] (70,707,070 samples, 25.93%)</title><rect x="10.0" y="133" width="305.9" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
-<text  x="13.00" y="143.5" >[libc.so.6]</text>
-</g>
-<g >
-<title>_int_free (10,101,010 samples, 3.70%)</title><rect x="272.2" y="37" width="43.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
-<text  x="275.22" y="47.5" >_int..</text>
-</g>
-<g >
-<title>operator new (10,101,010 samples, 3.70%)</title><rect x="1015.2" y="117" width="43.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
-<text  x="1018.19" y="127.5" >oper..</text>
-</g>
-<g >
-<title>std::_Rb_tree&lt;unsigned int, std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt;, std::_Select1st&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt;, std::greater&lt;unsigned int&gt;, std::allocator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; &gt;::_M_erase (20,202,020 samples, 7.41%)</title><rect x="228.5" y="69" width="87.4" height="15.0" fill="rgb(248,200,48)" rx="2" ry="2" />
-<text  x="231.52" y="79.5" >std::_Rb_t..</text>
-</g>
-<g >
-<title>BaselineOrderBook::~BaselineOrderBook (70,707,070 samples, 25.93%)</title><rect x="10.0" y="101" width="305.9" height="15.0" fill="rgb(209,18,4)" rx="2" ry="2" />
-<text  x="13.00" y="111.5" >BaselineOrderBook::~BaselineOrderBook</text>
-</g>
-<g >
-<title>[libstdc++.so.6.0.33] (191,919,190 samples, 70.37%)</title><rect x="359.6" y="149" width="830.4" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
-<text  x="362.63" y="159.5" >[libstdc++.so.6.0.33]</text>
-</g>
-<g >
-<title>cfree@GLIBC_2.2.5 (30,303,030 samples, 11.11%)</title><rect x="97.4" y="69" width="131.1" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
-<text  x="100.41" y="79.5" >cfree@GLIBC_2.2.5</text>
-</g>
-<g >
-<title>_start (80,808,080 samples, 29.63%)</title><rect x="10.0" y="181" width="349.6" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
+<title>_start (61,061,061 samples, 22.51%)</title><rect x="10.0" y="181" width="265.6" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
 <text  x="13.00" y="191.5" >_start</text>
 </g>
 <g >
-<title>all (272,727,270 samples, 100%)</title><rect x="10.0" y="213" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<title>malloc (23,023,023 samples, 8.49%)</title><rect x="1011.5" y="101" width="100.1" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1014.48" y="111.5" >malloc</text>
+</g>
+<g >
+<title>[libstdc++.so.6.0.33] (210,210,210 samples, 77.49%)</title><rect x="275.6" y="149" width="914.4" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="278.61" y="159.5" >[libstdc++.so.6.0.33]</text>
+</g>
+<g >
+<title>operator new (1,001,001 samples, 0.37%)</title><rect x="1155.2" y="101" width="4.3" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1158.17" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_insert_and_rebalance (7,007,007 samples, 2.58%)</title><rect x="1124.7" y="117" width="30.5" height="15.0" fill="rgb(225,94,22)" rx="2" ry="2" />
+<text  x="1127.69" y="127.5" >st..</text>
+</g>
+<g >
+<title>std::_Rb_tree&lt;unsigned int, std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt;, std::_Select1st&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt;, std::greater&lt;unsigned int&gt;, std::allocator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; &gt;::_M_erase (55,055,055 samples, 20.30%)</title><rect x="14.4" y="85" width="239.4" height="15.0" fill="rgb(248,200,48)" rx="2" ry="2" />
+<text  x="17.35" y="95.5" >std::_Rb_tree&lt;unsigned int, std..</text>
+</g>
+<g >
+<title>__libc_start_call_main (61,061,061 samples, 22.51%)</title><rect x="10.0" y="149" width="265.6" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="13.00" y="159.5" >__libc_start_call_main</text>
+</g>
+<g >
+<title>clone3 (210,210,210 samples, 77.49%)</title><rect x="275.6" y="181" width="914.4" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="278.61" y="191.5" >clone3</text>
+</g>
+<g >
+<title>all (271,271,271 samples, 100%)</title><rect x="10.0" y="213" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
 <text  x="13.00" y="223.5" ></text>
 </g>
 <g >
-<title>engineThread (171,717,170 samples, 62.96%)</title><rect x="359.6" y="133" width="743.0" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
-<text  x="362.63" y="143.5" >engineThread</text>
+<title>[libc.so.6] (56,056,056 samples, 20.66%)</title><rect x="10.0" y="133" width="243.8" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="13.00" y="143.5" >[libc.so.6]</text>
 </g>
 <g >
-<title>malloc (10,101,010 samples, 3.70%)</title><rect x="1058.9" y="85" width="43.7" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
-<text  x="1061.89" y="95.5" >malloc</text>
+<title>engineThread (203,203,203 samples, 74.91%)</title><rect x="275.6" y="133" width="883.9" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="278.61" y="143.5" >engineThread</text>
 </g>
 <g >
-<title>std::__detail::_List_node_base::_M_hook (20,202,020 samples, 7.41%)</title><rect x="1102.6" y="133" width="87.4" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
-<text  x="1105.59" y="143.5" >std::__det..</text>
+<title>main (5,005,005 samples, 1.85%)</title><rect x="253.8" y="133" width="21.8" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="256.84" y="143.5" >m..</text>
+</g>
+<g >
+<title>__mprotect (3,003,003 samples, 1.11%)</title><rect x="1050.7" y="85" width="13.0" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="1053.66" y="95.5" ></text>
+</g>
+<g >
+<title>_int_free (4,004,004 samples, 1.48%)</title><rect x="236.4" y="37" width="17.4" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="239.42" y="47.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_decrement (3,003,003 samples, 1.11%)</title><rect x="1111.6" y="117" width="13.1" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="1114.62" y="127.5" ></text>
+</g>
+<g >
+<title>_int_free (11,011,011 samples, 4.06%)</title><rect x="145.0" y="53" width="47.9" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="147.98" y="63.5" >_int..</text>
+</g>
+<g >
+<title>engine_baseline (271,271,271 samples, 100.00%)</title><rect x="10.0" y="197" width="1180.0" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="13.00" y="207.5" >engine_baseline</text>
+</g>
+<g >
+<title>cfree@GLIBC_2.2.5 (4,004,004 samples, 1.48%)</title><rect x="236.4" y="53" width="17.4" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="239.42" y="63.5" ></text>
+</g>
+<g >
+<title>_int_malloc (11,011,011 samples, 4.06%)</title><rect x="1063.7" y="85" width="47.9" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1066.73" y="95.5" >_int..</text>
+</g>
+<g >
+<title>__run_exit_handlers (56,056,056 samples, 20.66%)</title><rect x="10.0" y="117" width="243.8" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="13.00" y="127.5" >__run_exit_handlers</text>
+</g>
+<g >
+<title>operator delete (1,001,001 samples, 0.37%)</title><rect x="10.0" y="85" width="4.4" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="13.00" y="95.5" ></text>
+</g>
+<g >
+<title>operator new (1,001,001 samples, 0.37%)</title><rect x="1159.5" y="133" width="4.4" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1162.52" y="143.5" ></text>
+</g>
+<g >
+<title>start_thread (210,210,210 samples, 77.49%)</title><rect x="275.6" y="165" width="914.4" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="278.61" y="175.5" >start_thread</text>
+</g>
+<g >
+<title>std::__detail::_List_node_base::_M_hook (6,006,006 samples, 2.21%)</title><rect x="1163.9" y="133" width="26.1" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
+<text  x="1166.87" y="143.5" >s..</text>
+</g>
+<g >
+<title>operator new (23,023,023 samples, 8.49%)</title><rect x="1011.5" y="117" width="100.1" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1014.48" y="127.5" >operator new</text>
+</g>
+<g >
+<title>BaselineOrderBook::~BaselineOrderBook (56,056,056 samples, 20.66%)</title><rect x="10.0" y="101" width="243.8" height="15.0" fill="rgb(209,18,4)" rx="2" ry="2" />
+<text  x="13.00" y="111.5" >BaselineOrderBook::~BaselineOrde..</text>
+</g>
+<g >
+<title>std::_Rb_tree_iterator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; std::_Rb_tree&lt;unsigned int, std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt;, std::_Select1st&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt;, std::less&lt;unsigned int&gt;, std::allocator&lt;std::pair&lt;unsigned int const, std::__cxx11::list&lt;BaselineOrder, std::allocator&lt;BaselineOrder&gt; &gt; &gt; &gt; &gt;::_M_emplace_hint_unique&lt;std::piecewise_construct_t const&amp;, std::tuple&lt;unsigned int const&amp;&gt;, std::tuple&lt;&gt; &gt; (1,001,001 samples, 0.37%)</title><rect x="1155.2" y="117" width="4.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1158.17" y="127.5" ></text>
+</g>
+<g >
+<title>cfree@GLIBC_2.2.5 (14,014,014 samples, 5.17%)</title><rect x="131.9" y="69" width="61.0" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="134.92" y="79.5" >cfree@..</text>
+</g>
+<g >
+<title>__libc_start_main@@GLIBC_2.34 (61,061,061 samples, 22.51%)</title><rect x="10.0" y="165" width="265.6" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="13.00" y="175.5" >__libc_start_main@@GLIBC_2.34</text>
 </g>
 </g>
 </svg>
