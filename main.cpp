@@ -58,6 +58,46 @@ void engineThread() {
 
 }
 
+void loggerThread(std::atomic<bool>& loggingActive) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(6, &cpuset);
+
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) != 0) {
+        std::cerr << "[SYSTEM] Warning: Failed to set thread affinity for Logger Thread.\n";
+    }
+
+    std::ofstream fillLog("fills.csv", std::ios::out | std::ios::trunc);
+    if (!fillLog.is_open()) {
+        std::cerr << "[SYSTEM] Warning: Failed to open fills.csv for trade logging.\n";
+        return;
+    }
+    fillLog << "restingOrderID,aggressorOrderID,price,fillQuantity,aggressorSide\n";
+
+    FillEvent fe;
+    uint64_t loggedCount = 0;
+
+    auto drainAvailable = [&]() {
+        while (engine.popFill(fe)) {
+            fillLog << fe.restingOrderID << ',' << fe.aggressorOrderID << ','
+                     << fe.price << ',' << fe.fillQuantity << ','
+                     << (fe.aggressorSide == Side::BUY ? "B" : "S") << '\n';
+            ++loggedCount;
+        }
+    };
+
+    while (loggingActive.load(std::memory_order_acquire)) {
+        drainAvailable();
+        _mm_pause();
+    }
+
+    drainAvailable();
+
+    fillLog.flush();
+    std::cout << "[LOGGER] Logged " << loggedCount << " fills to fills.csv. Dropped fills (queue full): "
+              << engine.getDroppedFillCount() << "\n";
+}
+
 int main(int argc, char* argv[]) {
     
     cpu_set_t cpuset_main;
@@ -84,6 +124,10 @@ int main(int argc, char* argv[]) {
     
     // Launching the isolated consumer thread
     std::thread consumer(engineThread);
+
+    // Launching the fill-logging consumer thread (drains engine.fillQueue)
+    std::atomic<bool> loggingActive{true};
+    std::thread logger(loggerThread, std::ref(loggingActive));
     
     std::cout << "[MAIN] Executing a burst of 1,000,000 orders into the queue...\n";
 
@@ -91,19 +135,24 @@ int main(int argc, char* argv[]) {
     if (view.ends_with(".csv")) {
         CSVParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
-    else if (view.ends_with(".itch") || view.ends_with(".pcap")) {
+    else if (view.ends_with(".itch")) {
         ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
     else {
         std::cerr << "[SYSTEM] Unsupported file format.\n";
         marketOpen.store(false, std::memory_order_release);
         consumer.join();
+        loggingActive.store(false, std::memory_order_release);
+        logger.join();
         return 1;
     }
     marketOpen.store(false, std::memory_order_release);
     consumer.join();
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    loggingActive.store(false, std::memory_order_release);
+    logger.join();
     
     std::cout << "[MAIN] Ingestion burst completed in " << duration << " ms.\n";
 
