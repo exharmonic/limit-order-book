@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <fstream>
+#include "PCAPITCHParser.hpp"
 
 RingBuffer<Order, 1048576> orderQueue;
 LimitOrderBook engine;
@@ -107,7 +108,7 @@ int main(int argc, char* argv[]) {
     if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset_main) != 0) {
         std::cerr << "[SYSTEM] Warning: Failed to set thread affinity for Main Thread.\n";
     }
-    std::string filepath = "../data/sample.itch"; // Default relative to build/ dir
+    std::string filepath = "../data/sample.pcap"; // Default relative to build/ dir
     if (argc > 1) {
         filepath = argv[1];
     }
@@ -138,6 +139,9 @@ int main(int argc, char* argv[]) {
     else if (view.ends_with(".itch")) {
         ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
+    else if (view.ends_with(".pcap")) {
+        PCAPITCHParser::parseAndPush(filepath.c_str(), orderQueue);
+    }
     else {
         std::cerr << "[SYSTEM] Unsupported file format.\n";
         marketOpen.store(false, std::memory_order_release);

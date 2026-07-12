@@ -2,6 +2,7 @@
 #include "RingBuffer.hpp"
 #include "CSVParser.hpp"
 #include "ITCHParser.hpp"
+#include "PCAPITCHParser.hpp"
 #include <iostream>
 #include <thread>
 #include <atomic>
@@ -78,7 +79,7 @@ int main(int argc, char* argv[]) {
     if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset_main) != 0) {
         std::cerr << "[SYSTEM] Warning: Failed to set thread affinity for Main Thread.\n";
     }
-    std::string filepath = "../data/sample.itch"; // Default relative to build/ dir
+    std::string filepath = "../data/sample.pcap"; // Default relative to build/ dir
     if (argc > 1) {
         filepath = argv[1];
     }
@@ -102,9 +103,12 @@ int main(int argc, char* argv[]) {
     if (view.ends_with(".csv")) {
         CSVParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
-    else if (view.ends_with(".itch") || view.ends_with(".pcap")) {
+    else if (view.ends_with(".itch")) {
         ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
+    else if (view.ends_with(".pcap")) {
+        PCAPITCHParser::parseAndPush(filepath.c_str(), orderQueue);
+    }
     else {
         std::cerr << "[SYSTEM] Unsupported file format.\n";
         marketOpen.store(false, std::memory_order_release);
