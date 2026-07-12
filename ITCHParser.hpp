@@ -72,15 +72,65 @@ class ITCHParser {
                (static_cast<uint64_t>(ts[3]) << 16) | (static_cast<uint64_t>(ts[4]) << 8)  | (static_cast<uint64_t>(ts[5]));
         }
 
+        static inline void processMessage(const char* ptr, RingBuffer<Order, 1048576>& buffer) {
+            char readMessage = * ptr;
+            switch(readMessage) {
+                case 'A': { // Add order.
+                    const auto* msg = reinterpret_cast<const ITCHOrderMessage*> (ptr); // Use the sizes of the struct elements and automatically cast raw binary into respective struct elements.
+
+                    Order order;
+                    order.orderID = bswap64(msg->orderRef);
+                    order.quantity = bswap32(msg->shares);
+                    order.price = bswap32(msg->price);
+                    order.side = (msg->buySellIndicator == 'B')? Side::BUY : Side::SELL;
+
+                    while (!buffer.push(order)) {
+                        _mm_pause();
+                    }
+                    break;
+                }
+                case 'F': {
+                    const auto* msg = reinterpret_cast<const ITCHAddOrderAttributionMessage*> (ptr); // Use the sizes of the struct elements and automatically cast raw binary into respective struct elements.
+
+                    Order order;
+                    order.orderID = bswap64(msg->orderRef);
+                    order.quantity = bswap32(msg->shares);
+                    order.price = bswap32(msg->price);
+                    order.side = (msg->buySellIndicator == 'B')? Side::BUY : Side::SELL;
+
+                    while (!buffer.push(order)) {
+                        _mm_pause();
+                    }
+                    break;
+                }
+                case 'D': { // Delete Order
+                    const auto* msg = reinterpret_cast<const ITCHOrderDeleteMessage*>(ptr);
+
+                    Order cancelSignal;
+                    cancelSignal.orderID = bswap64(msg->orderRef);
+                    cancelSignal.quantity = 0;
+
+                    while (!buffer.push(cancelSignal)) {
+                        _mm_pause(); // Spin if the queue is full
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
         static void parseAndPush(const char* filepath, RingBuffer<Order, 1048576>& buffer) {
             int fd = open(filepath, O_RDONLY);
             if (fd == -1) {
                 std::cerr<<"[SYSTEM] Failed to open the dataset.\n";
+                close(fd);
                 return;
             }
             struct stat sb;
             if (fstat(fd, &sb) == -1) {
                 std::cerr<<"[SYSTEM] Failed to get file size.\n";
+                close(fd);
                 return;
             }
             size_t length = sb.st_size; // Size of files in bytes
@@ -90,6 +140,7 @@ class ITCHParser {
 
             if (data == MAP_FAILED) {
                 std::cerr<<"[NETWORK] Failed to map memory.\n";
+                close(fd);
                 return;
             }
 
@@ -100,52 +151,7 @@ class ITCHParser {
                 ptr += 2; // Step past the length header
                 if (ptr + msgLength > end) break;
 
-                char readMessage = *ptr;
-
-                switch(readMessage) {
-                    case 'A': { // Add order.
-                        const auto* msg = reinterpret_cast<const ITCHOrderMessage*> (ptr); // Use the sizes of the struct elements and automatically cast raw binary into respective struct elements.
-
-                        Order order;
-                        order.orderID = bswap64(msg->orderRef);
-                        order.quantity = bswap32(msg->shares);
-                        order.price = bswap32(msg->price);
-                        order.side = (msg->buySellIndicator == 'B')? Side::BUY : Side::SELL;
-
-                        while (!buffer.push(order)) {
-                            _mm_pause();
-                        }
-                        break;
-                    }
-                    case 'F': {
-                        const auto* msg = reinterpret_cast<const ITCHAddOrderAttributionMessage*> (ptr); // Use the sizes of the struct elements and automatically cast raw binary into respective struct elements.
-
-                        Order order;
-                        order.orderID = bswap64(msg->orderRef);
-                        order.quantity = bswap32(msg->shares);
-                        order.price = bswap32(msg->price);
-                        order.side = (msg->buySellIndicator == 'B')? Side::BUY : Side::SELL;
-
-                        while (!buffer.push(order)) {
-                            _mm_pause();
-                        }
-                        break;
-                    }
-                    case 'D': { // Delete Order
-                        const auto* msg = reinterpret_cast<const ITCHOrderDeleteMessage*>(ptr);
-
-                        Order cancelSignal;
-                        cancelSignal.orderID = bswap64(msg->orderRef);
-                        cancelSignal.quantity = 0;
-
-                        while (!buffer.push(cancelSignal)) {
-                            _mm_pause(); // Spin if the queue is full
-                        }
-                        break;
-                    }
-                                        default:
-                        break;
-                    }
+                processMessage(ptr, buffer);
                 ptr += msgLength;   
             }
             munmap((void*)data, length);

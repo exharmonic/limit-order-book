@@ -2,6 +2,7 @@
 #include "RingBuffer.hpp"
 #include "CSVParser.hpp"
 #include "ITCHParser.hpp"
+#include "PCAPITCHParser.hpp"
 #include <iostream>
 #include <thread>
 #include <atomic>
@@ -102,9 +103,12 @@ int main(int argc, char* argv[]) {
     if (view.ends_with(".csv")) {
         CSVParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
-    else if (view.ends_with(".itch") || view.ends_with(".pcap")) {
+    else if (view.ends_with(".itch")) {
         ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
+    else if (view.ends_with(".pcap")) {
+        PCAPITCHParser::parseAndPush(filepath.c_str(), orderQueue);
+    }
     else {
         std::cerr << "[SYSTEM] Unsupported file format.\n";
         marketOpen.store(false, std::memory_order_release);

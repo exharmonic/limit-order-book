@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <fstream>
+#include "PCAPITCHParser.hpp"
 
 RingBuffer<Order, 1048576> orderQueue;
 LimitOrderBook engine;
@@ -138,6 +139,9 @@ int main(int argc, char* argv[]) {
     else if (view.ends_with(".itch")) {
         ITCHParser::parseAndPush(filepath.c_str(), orderQueue);
     } 
+    else if (view.ends_with(".pcap")) {
+        PCAPITCHParser::parseAndPush(filepath.c_str(), orderQueue);
+    }
     else {
         std::cerr << "[SYSTEM] Unsupported file format.\n";
         marketOpen.store(false, std::memory_order_release);
