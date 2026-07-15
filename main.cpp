@@ -154,6 +154,9 @@ int main(int argc, char* argv[]) {
     consumer.join();
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    #ifdef DEBUG
+    std::cout << "[ENGINE] Resting orders remaining: " << engine.restingOrderCount() << " / 1,000,000\n";
+    #endif
 
     loggingActive.store(false, std::memory_order_release);
     logger.join();

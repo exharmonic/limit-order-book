@@ -13,6 +13,12 @@ if(ENABLE_PROFILING)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer")
 endif()
 
+option(ENABLE_BOOK_VERIFY "Print resting order counts for baseline/engine parity checks" OFF)
+
+if(ENABLE_BOOK_VERIFY)
+    add_compile_definitions(VERIFY_BOOK_STATE)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
   googlebenchmark

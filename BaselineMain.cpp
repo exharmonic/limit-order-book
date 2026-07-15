@@ -121,8 +121,9 @@ int main(int argc, char* argv[]) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     
     std::cout << "[MAIN] Ingestion burst completed in " << duration << " ms.\n";
-
-
+    #ifdef DEBUG
+    std::cout << "[BASELINE] Resting orders remaining: " << engine.restingOrderCount() << " / 1,000,000\n";
+    #endif
     std::cout << "[MAIN] Execution verified. Core closed successfully.\n";
     
     return 0;

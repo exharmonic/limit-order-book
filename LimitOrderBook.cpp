@@ -1,6 +1,28 @@
 #include "LimitOrderBook.hpp" 
 #include <iostream> 
 
+size_t LimitOrderBook::restingOrderCount() {
+    size_t total = 0;
+
+    for (uint32_t p = 1; p < MAX_PRICE; ++p) {
+        uint32_t idx = bids[p].headOrderIdx;
+        while (idx != 0) {
+            ++total;
+            idx = orderPool.get(idx).nextOrderIdx;
+        }
+    }
+
+    for (uint32_t p = 1; p < MAX_PRICE; ++p) {
+        uint32_t idx = asks[p].headOrderIdx;
+        while (idx != 0) {
+            ++total;
+            idx = orderPool.get(idx).nextOrderIdx;
+        }
+    }
+
+    return total;
+}
+
 uint32_t LimitOrderBook::findNextBestBid(uint32_t currentBid) {
     int startWord = currentBid / 64;
     for (int i = startWord; i >= 0; --i) {

@@ -41,6 +41,7 @@ class LimitOrderBook {
         void addMarketOrder(Order order);
         void cancelOrder(uint32_t orderID);
         void printBook();
+        size_t restingOrderCount();
 
         bool popFill(FillEvent& out) { return fillQueue.pop(out); }
         uint64_t getDroppedFillCount() const { return droppedFillCount; }
