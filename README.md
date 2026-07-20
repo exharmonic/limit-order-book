@@ -1,6 +1,6 @@
 # NanoMatch — Limit Order Book Engine
 
-A limit order book written in C++20, built to be as fast as possible. It reads NASDAQ ITCH 5.0 binary feeds or CSV files, matches limit and market orders by price-time priority, and processes them on a dedicated thread pinned to its own CPU core.
+A limit order book written in C++20, built to be as fast as possible. It reads NASDAQ ITCH 5.0 binary feeds, PCAP-captured ITCH/MoldUDP64 multicast traffic, or CSV files, matches limit and market orders by price-time priority, and processes them on a dedicated thread pinned to its own CPU core.
 
 ---
 
@@ -48,7 +48,7 @@ Orders also carry a **market-order path**: any order routed to the engine with `
  
 **32-byte node alignment.** Each `OrderNode` is exactly 32 bytes, so two fit neatly in a 64-byte L1 cache line. Traversing a price level's order queue reads two nodes per cache line fetch.
  
-**Zero-copy file parsing.** Both parsers use `mmap` to map the file into virtual memory directly. There's no `fstream`, no intermediate buffer — the kernel's page cache is the read buffer. ITCH binary messages are decoded by casting a raw pointer straight to a packed struct, plus a byte-swap for big-endian fields.
+**Zero-copy file parsing.** All three parsers (CSV, raw ITCH, and PCAP-wrapped ITCH) use `mmap` to map the file into virtual memory directly. There's no `fstream`, no intermediate buffer — the kernel's page cache is the read buffer. ITCH binary messages are decoded by casting a raw pointer straight to a packed struct, plus a byte-swap for big-endian fields; the PCAP path additionally walks the Ethernet/IPv4/UDP/MoldUDP64 envelope before handing each embedded message to the same ITCH decoder.
  
 **Heap-allocated book instances in benchmarks.** `LimitOrderBook` owns two `std::array<PriceLevel, MAX_PRICE>` (one per side), an `orderMap` of `MAX_ORDERS` entries, and its own `MemoryPool` — several megabytes of state in total. That's too large to construct safely on the stack of a benchmark function, so every `BENCHMARK` fixture that needs a fresh book (`BM_EngineScaling`, `BM_PingPong`, `BM_LevelSweep`) constructs it via `std::make_unique<LimitOrderBook>()` instead, keeping the object on the heap while everything inside it is still contiguous, pre-wired memory.
  
@@ -86,8 +86,8 @@ Numbers below were measured after the market-order and fill-reporting changes.
  
 | | |
 |---|---|
-| CPU | Intel Core i7-14650HX (12 physical cores, 24 threads, 1 socket) |
-| Cache | L1d 576 KiB · L1i 384 KiB · L2 24 MiB · L3 30 MiB |
+| CPU | Intel Core i7-14650HX (12 physical cores, 24 threads, 1 socket), calibrated TSC 2287.96 MHz |
+| Cache | L1d 48 KiB ×12 (576 KiB total) · L1i 32 KiB ×12 (384 KiB total) · L2 2048 KiB ×12 (24 MiB total) · L3 30720 KiB (30 MiB) |
 | RAM | 7.6 GiB |
 | OS | WSL2 (Ubuntu 24.04) on Windows, kernel 6.18.33.1-microsoft-standard-WSL2 |
 | Compiler | g++ 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) |
@@ -99,12 +99,14 @@ Each fixture runs 20 times; p50/p90/p99 are reported.
  
 ### Scaling: Engine vs. std::map baseline
  
-| Book depth | Baseline p50 | Baseline p99 | Engine p50 | Engine p99 |
-|---|---|---|---|---|
-| 100 levels | 9.83 ns | 22.5 ns | 9.14 ns | 9.41 ns |
-| 1,000 levels | 10.9 ns | 22.6 ns | 9.14 ns | 9.23 ns |
-| 10,000 levels | 11.8 ns | 15.3 ns | 9.15 ns | 9.66 ns |
-| 100,000 levels | 21.1 ns | 31.3 ns | 9.20 ns | 9.37 ns |
+| Book depth | Baseline p50 | Baseline p90 | Baseline p99 | Engine p50 (mean) | Engine p90 (mean) | Engine p99 (mean) |
+|---|---|---|---|---|---|---|
+| 100 levels | 12.2 ns | 14.2 ns | 25.0 ns | 10.64 ns | 11.39 ns | 12.05 ns |
+| 1,000 levels | 13.1 ns | 15.6 ns | 26.2 ns | 9.90 ns | 10.60 ns | 11.35 ns |
+| 10,000 levels | 16.4 ns | 17.3 ns | 17.8 ns | 10.25 ns | 11.02 ns | 12.42 ns |
+| 100,000 levels | 24.3 ns | 25.5 ns | 28.7 ns | 9.68 ns | 10.53 ns | 12.00 ns |
+ 
+The engine's per-op latency again stays essentially flat (~9.7–10.6 ns p50) regardless of book depth, while the baseline's p50 grows from 12.2 ns to 24.3 ns as the book fills — the same qualitative story as before, on this run's numbers.
  
 ### Other fixtures
  
@@ -112,31 +114,44 @@ Each fixture runs 20 times; p50/p90/p99 are reported.
  
 | p50 | p90 | p99 |
 |---|---|---|
-| 63.4 ns | 64.0 ns | 66.8 ns |
+| 67.9 ns | 69.1 ns | 70.2 ns |
  
 **Level Sweep** — one aggressive SELL sweeps through 100 resting BUY orders at the same price. 100 nodes removed in a single `addOrder` call.
  
 | p50 | p90 | p99 |
 |---|---|---|
-| 418 ns | 419 ns | 424 ns |
+| 468 ns | 489 ns | 495 ns |
  
-That's about 4.18 ns per node swept, with very low variance (~0.45% CV) — the tight stddev shows the pool and cache alignment doing their job.
+That's about 4.68 ns per node swept (p50), with low variance (~3.7% CV) — the pool and cache alignment doing their job.
  
 ---
  
 ## End-to-end ingestion throughput
  
-1,000,000 orders read from `data/sample.itch`, parsed, and matched — engine vs. std::map baseline, native (no profiler attached). Runs were interleaved (baseline, engine, baseline, engine, ...) to control for thermal/scheduling drift between measurements.
+1,000,000 orders read from `data/sample.pcap` (the current default feed for both binaries — Ethernet/IPv4/UDP/MoldUDP64-wrapped ITCH, 50,000 packets), parsed, and matched — engine vs. std::map baseline, native (no profiler attached). Runs were interleaved (baseline, engine, baseline, engine, ...) to control for thermal/scheduling drift between measurements.
  
 | Run | Baseline (ms) | Engine (ms) |
 |---|---|---|
-| 1 | 208 | 47 |
-| 2 | 224 | 46 |
-| 3 | 207 | 45 |
-| 4 | 208 | 43 |
-| **Average** | **~211.75 ms** | **~45.25 ms** |
+| 1 | 202 | 66 |
+| 2 | 163 | 53 |
+| 3 | 181 | 60 |
+| 4 | 191 | 48 |
+| 5 | 175 | 56 |
+| **Average** | **~182.4 ms** | **~56.6 ms** |
  
-**~4.7x speedup**, or roughly **~22M orders/sec** for the engine vs. **~4.7M orders/sec** for the baseline.
+**~3.2x speedup**, or roughly **~17.7M orders/sec** for the engine vs. **~5.5M orders/sec** for the baseline. This is lower than the ~4.7x/~22M-orders/sec figure measured on the raw `.itch` feed — parsing the PCAP envelope (Ethernet/IPv4/UDP/MoldUDP64 headers per packet, on top of the ITCH message itself) adds real per-packet overhead that the earlier ITCH-only measurement didn't include. Re-running against `data/sample.itch` directly should reproduce numbers closer to the original figures if you want a like-for-like comparison.
+ 
+`engine_main` also prints a live per-order dispatch latency for the run, in raw CPU cycles (not nanoseconds — `main.cpp` doesn't convert these). Across the five runs above, sample counts ranged from 97,790 to 481,284 "live" samples (orders dispatched by the engine thread *while* the parser was still feeding it, before the final drain) — this range reflects how the SPSC queue happened to interleave with the parser on a given run, not a fixed order count, so treat these as illustrative rather than a stable percentile:
+ 
+| Run | Live samples | p50 (cycles) | p90 (cycles) | p99 (cycles) |
+|---|---|---|---|---|
+| 1 | 481,284 | 30 | 92 | 185 |
+| 2 | 184,899 | 65 | 179 | 250 |
+| 3 | 126,136 | 51 | 159 | 256 |
+| 4 | 124,755 | 33 | 118 | 262 |
+| 5 | 97,790 | 46 | 122 | 272 |
+ 
+At this machine's calibrated ~2.288 GHz TSC, that's roughly 13–29 ns p50 and 81–119 ns p99 across runs — noisier than the isolated `engine_bench` numbers above, since this is the real dispatch loop competing with the parser and logger threads rather than an isolated microbenchmark.
  
 ![Terminal output of interleaved native ingestion runs for baseline and optimized engine](docs/combined_ingestion_throughput.png "Interleaved runs of engine_baseline and engine_main on 1M orders, alternating to control for drift")
  
@@ -185,6 +200,8 @@ perf script -i perf.data | ../flamegraph/stackcollapse-perf.pl | ../flamegraph/f
  
 Baseline breakdown — allocator-related functions (`_int_malloc`, `_int_free`, `malloc`, `free`, `alloc_perturb`) account for **54.4%** of all instructions. The optimized build has no allocator frames in its top functions at all; `LimitOrderBook::addOrder` (**56.3%**) dominates, with `main` (**21.1%**, the parser thread) and `engineThread` (**14.1%**, the dispatch loop) making up most of the rest.
 
+> **⚠️ Needs re-verification.** A more recent cachegrind run on this same machine (`valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 ./engine_main ../data/sample.itch` / `./engine_baseline ../data/sample.itch`) measured `Ir` as **1,553,261,936** for `engine_main` vs. **478,442,494** for `engine_baseline` — the *opposite* direction from the numbers above (optimized executing ~3.25x *more* instructions, not fewer), even though `engine_main` still finished faster in wall-clock time (543 ms vs. 1589 ms under valgrind instrumentation). That contradicts the "no allocator frames in the hot path" narrative this section is built on, so it likely reflects the `engine_main` binary not having been rebuilt with `-O3 -march=native -flto` for that particular run (e.g. a stale or debug artifact from an earlier configure), not an actual regression in the matching engine. **Rebuild clean (`rm -rf build && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_PROFILING=ON && make -j$(nproc)`) and re-run both `valgrind` commands before trusting/publishing an updated version of the table above** — the D1/LL numbers below were still directionally consistent with the original claims, but the `Ir` figures were left unchanged pending that re-run.
+
 ### Cachegrind: cache simulation (D1 / LL misses)
  
 Cache parameters set to match this machine's actual topology (48 KiB L1d, 12-way; 30 MiB LL/L3, 15-way after Valgrind's power-of-two rounding), rather than generic defaults:
@@ -196,10 +213,12 @@ valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 
  
 | Metric | Baseline | Optimized | Change |
 |---|---|---|---|
-| D refs | 238,159,410 | 81,102,177 | **2.94x fewer** |
-| D1 misses (absolute) | 17,109,978 | 4,269,419 | **4.01x fewer** |
-| D1 miss rate | 7.2% | 5.3% | modest improvement |
-| LLd miss rate | 1.2% | 2.9% | worse |
+| D refs | 173,569,832 | 703,274,918 | optimized run had more (see note above — likely same stale-build cause) |
+| D1 misses (absolute) | 11,795,487 | 4,585,866 | **2.57x fewer** |
+| D1 miss rate | 6.8% | 0.7% | large improvement |
+| LLd miss rate | 1.4% | 0.4% | improvement |
+ 
+These D1/LL miss-rate improvements are directionally consistent with the original claim (fewer misses per access in the optimized build), even on the run where the raw `Ir`/`D refs` totals look anomalous — but given that anomaly, treat this whole table as provisional until re-measured on a confirmed clean `-O3 -flto` build.
  
 **Observation:** The LLd miss rate is higher in the optimized build. The win here comes from doing fewer memory accesses in total (no rb-tree traversal, no list node allocation), not from each access being individually more cache-friendly — that's also why the *absolute* number of D1 misses still drops by a full 4x even though the rate improvement is modest.
  
@@ -216,6 +235,7 @@ valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 
 ├── RingBuffer.hpp           lock-free SPSC queue (used for both orders and fills)
 ├── CSVParser.hpp            zero-copy CSV parser
 ├── ITCHParser.hpp           zero-copy ITCH 5.0 binary parser
+├── PCAPITCHParser.hpp       zero-copy PCAP parser (Ethernet/IPv4/UDP/MoldUDP64 → ITCHParser)
 ├── BaselineOrderBook.hpp    std::map reference implementation (benchmarking only)
 ├── benchmark.cpp            Google Benchmark suite
 ├── main.cpp                 entry point; parser/engine/logger thread setup, timing
@@ -224,7 +244,8 @@ valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 
 ├── docs/
 └── scripts/
     ├── csv_generator.py     generates 1M synthetic orders as CSV
-    └── itch_generator.py    generates 1M synthetic orders as ITCH binary (~38 MB)
+    ├── itch_generator.py    generates 1M synthetic orders as ITCH binary (~38 MB)
+    └── pcap_generator.py    generates 1M synthetic ITCH orders wrapped in Ethernet/IPv4/UDP/MoldUDP64, as a .pcap capture
 ```
  
 ---
@@ -252,9 +273,10 @@ Generate test data:
 ```bash
 python3 scripts/itch_generator.py   # creates data/sample.itch
 python3 scripts/csv_generator.py    # creates data/orders.csv
+python3 scripts/pcap_generator.py   # creates data/sample.pcap (same ITCH payloads, wrapped in Ethernet/IPv4/UDP/MoldUDP64)
 ```
  
-Run the ingestion engine (processes `data/sample.itch` by default):
+Run the ingestion engine (processes `data/sample.pcap` by default — this is the current default in both `main.cpp` and `BaselineMain.cpp`):
  
 ```bash
 ./engine_main
@@ -266,7 +288,7 @@ Run benchmarks:
 ./engine_bench
 ```
  
-To switch between CSV and ITCH, change the `filepath` variable in `main.cpp`, or pass a path as the first argument to `engine_main` / `engine_baseline`.
+To switch between CSV, raw ITCH, and PCAP, change the `filepath` variable in `main.cpp`, or pass a path as the first argument to `engine_main` / `engine_baseline` — the extension (`.csv`, `.itch`, `.pcap`) determines which parser is used.
  
 ---
  
@@ -275,10 +297,12 @@ To switch between CSV and ITCH, change the `filepath` variable in `main.cpp`, or
 **CSV** — one order per line: `orderID,price,quantity,side` (0 = buy, 1 = sell).
  
 **NASDAQ ITCH 5.0** — binary. Handles message types `A` (add order), `F` (add order with attribution), and `D` (delete order). Everything else is skipped.
+
+**PCAP (Ethernet/IPv4/UDP/MoldUDP64-wrapped ITCH)** — a `.pcap` capture containing NASDAQ TotalView-ITCH messages carried over MoldUDP64 multicast, the way they'd actually arrive off an exchange feed. `PCAPITCHParser` walks each captured packet's classic pcap record header, verifies the Ethernet frame (with optional single 802.1Q VLAN tag), IPv4 header, and UDP header, then unpacks the MoldUDP64 block's message count and hands each embedded ITCH message to the same `ITCHParser::processMessage` used by the raw `.itch` path — so the matching logic downstream is identical regardless of which of the three formats the data arrived in. Non-Ethernet link types, non-IPv4/non-UDP packets, and truncated captures are skipped and counted, not treated as fatal.
  
-**Market orders** — the engine's `addMarketOrder` path is triggered whenever an order reaching `main.cpp`'s dispatch has `price == 0` and `quantity > 0`; it sweeps the opposite side of the book at whatever price is resting rather than joining the book unfilled. Neither `csv_generator.py` nor `itch_generator.py` currently emits `price == 0` rows, so this path exists in the engine but isn't exercised by the bundled sample data — feed it a CSV/ITCH row with price `0`, or call `addMarketOrder` directly, to use it.
+**Market orders** — the engine's `addMarketOrder` path is triggered whenever an order reaching `main.cpp`'s dispatch has `price == 0` and `quantity > 0`; it sweeps the opposite side of the book at whatever price is resting rather than joining the book unfilled. None of `csv_generator.py`, `itch_generator.py`, or `pcap_generator.py` currently emit `price == 0` rows, so this path exists in the engine but isn't exercised by the bundled sample data — feed it a CSV/ITCH/PCAP row with price `0`, or call `addMarketOrder` directly, to use it. Note that `BaselineOrderBook` has no equivalent concept at all: a `price == 0` row reaching `BaselineMain.cpp` is inserted as an ordinary resting order at price 0 rather than swept, so the two binaries are only benchmark-comparable as long as the feed never contains price-0 rows.
  
-**Cancellations** — signalled by `quantity == 0` on the incoming `Order`/CSV row; the ITCH delete-order (`D`) message maps to this the same way.
+**Cancellations** — signalled by `quantity == 0` on the incoming `Order`/CSV row; the ITCH delete-order (`D`) message (raw or PCAP-wrapped) maps to this the same way.
  
 ---
  
@@ -292,4 +316,5 @@ To switch between CSV and ITCH, change the `filepath` variable in `main.cpp`, or
 - `fills.csv` is truncated and rewritten on every run of `engine_main` — there's no append-across-runs or rotation logic.
 - No persistence. Everything lives in memory; a crash loses the book state.
 - Memory pool exhaustion (>1,100,000 live orders) is logged to stderr and the order is silently dropped rather than causing a resize/reallocation.
-- `LimitOrderBook` is large enough (multi-megabyte `bids`/`asks`/`orderMap` arrays) that it should always be heap-allocated (e.g. via `std::make_unique`) rather than placed on the stack — this is already how `benchmark.cpp` and both `main.cpp`/`BaselineMain.cpp` construct it, but it's worth keeping in mind if you add new call sites.  
+- `LimitOrderBook` is large enough (multi-megabyte `bids`/`asks`/`orderMap` arrays) that it should always be heap-allocated (e.g. via `std::make_unique`) rather than placed on the stack — this is already how `benchmark.cpp` and both `main.cpp`/`BaselineMain.cpp` construct it, but it's worth keeping in mind if you add new call sites.
+- See [Known issues](#known-issues) above for the baseline cancel-path bug affecting ITCH/PCAP delete messages.
