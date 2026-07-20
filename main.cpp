@@ -6,8 +6,11 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
-#include<string>
-#include<string_view>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <string_view>
 #include <pthread.h>
 #include <sched.h>
 #include <fstream>
@@ -16,6 +19,14 @@
 RingBuffer<Order, 1048576> orderQueue;
 LimitOrderBook engine;
 std::atomic<bool> marketOpen{true};
+
+static inline uint64_t rdtsc() {
+    unsigned lo, hi;
+    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+std::vector<uint64_t> orderLatencies;
 
 void engineThread() {
 
@@ -30,17 +41,22 @@ void engineThread() {
     Order incomingOrder;
     uint32_t processedCount = 0;
 
+    orderLatencies.reserve(1'100'001);
+
     while (marketOpen.load(std::memory_order_relaxed)) {
         if (orderQueue.pop(incomingOrder)) {
+            uint64_t t0 = rdtsc();
             if (incomingOrder.quantity > 0) {
                 if (incomingOrder.price == 0) {
                     engine.addMarketOrder(incomingOrder);
                 } else {
-            engine.addOrder(incomingOrder);
+                    engine.addOrder(incomingOrder);
                 }
             } else {
                 engine.cancelOrder(incomingOrder.orderID);
             }
+            uint64_t t1 = rdtsc();
+            orderLatencies.push_back(t1 - t0);
             processedCount++;
         }
         else {
@@ -157,6 +173,19 @@ int main(int argc, char* argv[]) {
     #ifdef DEBUG
     std::cout << "[ENGINE] Resting orders remaining: " << engine.restingOrderCount() << " / 1,000,000\n";
     #endif
+
+    if (!orderLatencies.empty()) {
+        std::sort(orderLatencies.begin(), orderLatencies.end());
+        auto pct = [&](double p) {
+            size_t idx = std::min(orderLatencies.size() - 1,
+                           (size_t)std::ceil(orderLatencies.size() * p) - 1);
+            return orderLatencies[idx];
+        };
+        std::cout << "[ENGINE] Per-order latency (cycles) over " << orderLatencies.size()
+                  << " live samples — p50: " << pct(0.50)
+                  << "  p90: " << pct(0.90)
+                  << "  p99: " << pct(0.99) << "\n";
+    }
 
     loggingActive.store(false, std::memory_order_release);
     logger.join();
