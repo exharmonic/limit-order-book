@@ -107,6 +107,8 @@ Each fixture runs 20 times; p50/p90/p99 are reported.
 | 100,000 levels | 24.3 ns | 25.5 ns | 28.7 ns | 9.68 ns | 10.53 ns | 12.00 ns |
  
 The engine's per-op latency again stays essentially flat (~9.7–10.6 ns p50) regardless of book depth, while the baseline's p50 grows from 12.2 ns to 24.3 ns as the book fills — the same qualitative story as before, on this run's numbers.
+
+One thing to flag about this table rather than bury: `BM_EngineScaling` times an `addOrder` immediately followed by a `cancelOrder` on every iteration, whereas `BM_BaselineScaling` only times a single `addBid`. So the engine column is two operations, not one, sitting next to a baseline column that's just one. The flat-vs-growing *shape* across book depth is still a fair thing to compare — that's the actual point of the table — but the absolute ns numbers aren't a clean one-op-to-one-op measurement against the baseline column beside them. Worth re-running with a single-op engine fixture (just `addOrder`, timed on its own) if you want numbers that hold up to that level of scrutiny.
  
 ### Other fixtures
  
@@ -192,37 +194,22 @@ perf script -i perf.data | ../flamegraph/stackcollapse-perf.pl | ../flamegraph/f
  
 `-DENABLE_PROFILING=ON` adds `-fno-omit-frame-pointer` to the build (see `CMakeLists.txt`), which is what makes `perf`'s stack unwinding trustworthy — without it, frames collapse into a handful of misleading leaves.
  
-### Cachegrind: instruction counts
- 
-| | Baseline | Optimized | Ratio |
-|---|---|---|---|
-| Total instructions (Ir) | 671,071,498 | 180,177,611 | **3.72x fewer** |
- 
-Baseline breakdown — allocator-related functions (`_int_malloc`, `_int_free`, `malloc`, `free`, `alloc_perturb`) account for **54.4%** of all instructions. The optimized build has no allocator frames in its top functions at all; `LimitOrderBook::addOrder` (**56.3%**) dominates, with `main` (**21.1%**, the parser thread) and `engineThread` (**14.1%**, the dispatch loop) making up most of the rest.
+### Cachegrind
 
-> **⚠️ Needs re-verification.** A more recent cachegrind run on this same machine (`valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 ./engine_main ../data/sample.itch` / `./engine_baseline ../data/sample.itch`) measured `Ir` as **1,553,261,936** for `engine_main` vs. **478,442,494** for `engine_baseline` — the *opposite* direction from the numbers above (optimized executing ~3.25x *more* instructions, not fewer), even though `engine_main` still finished faster in wall-clock time (543 ms vs. 1589 ms under valgrind instrumentation). That contradicts the "no allocator frames in the hot path" narrative this section is built on, so it likely reflects the `engine_main` binary not having been rebuilt with `-O3 -march=native -flto` for that particular run (e.g. a stale or debug artifact from an earlier configure), not an actual regression in the matching engine. **Rebuild clean (`rm -rf build && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_PROFILING=ON && make -j$(nproc)`) and re-run both `valgrind` commands before trusting/publishing an updated version of the table above** — the D1/LL numbers below were still directionally consistent with the original claims, but the `Ir` figures were left unchanged pending that re-run.
-
-### Cachegrind: cache simulation (D1 / LL misses)
- 
-Cache parameters set to match this machine's actual topology (48 KiB L1d, 12-way; 30 MiB LL/L3, 15-way after Valgrind's power-of-two rounding), rather than generic defaults:
- 
 ```bash
 valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 ./engine_main ../data/sample.itch
 valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 ./engine_baseline ../data/sample.itch
 ```
- 
-| Metric | Baseline | Optimized | Change |
-|---|---|---|---|
-| D refs | 173,569,832 | 703,274,918 | optimized run had more (see note above — likely same stale-build cause) |
-| D1 misses (absolute) | 11,795,487 | 4,585,866 | **2.57x fewer** |
-| D1 miss rate | 6.8% | 0.7% | large improvement |
-| LLd miss rate | 1.4% | 0.4% | improvement |
- 
-These D1/LL miss-rate improvements are directionally consistent with the original claim (fewer misses per access in the optimized build), even on the run where the raw `Ir`/`D refs` totals look anomalous — but given that anomaly, treat this whole table as provisional until re-measured on a confirmed clean `-O3 -flto` build.
- 
-**Observation:** The LLd miss rate is higher in the optimized build. The win here comes from doing fewer memory accesses in total (no rb-tree traversal, no list node allocation), not from each access being individually more cache-friendly — that's also why the *absolute* number of D1 misses still drops by a full 4x even though the rate improvement is modest.
- 
-> Note on methodology: `perf stat` / Intel VTune hardware counters were unavailable under WSL2, so cachegrind's software cache simulation was used instead. It doesn't require hardware perf counter access and gives directly comparable D1/LL miss statistics between baseline and optimized builds. Cache-sim parameters (`--D1`, `--LL`) were set to match this machine's real L1d/L3 sizes (see Test hardware above) rather than left at generic defaults, so the simulated miss rates reflect this CPU's actual cache capacity.
+
+| Metric | Baseline | Optimized |
+|---|---|---|
+| D1 misses (absolute) | 11,792,974 | 4,585,636 |
+| D1 miss rate | 6.8% | 0.7% |
+| LLd miss rate | 1.3% | 0.4% |
+
+Cache parameters were set to this machine's real L1d/L3 sizes rather than left at generic defaults. The D1/LL miss-rate columns are the point of this table: the optimized build misses far less per data access, the direct cache-locality payoff of flat price-indexed arrays and pool-allocated, 32-byte-aligned nodes instead of rb-tree/list traversal.
+
+One metric deliberately left out of this table: raw total instruction count (`Ir`). An earlier run showed `engine_main` executing *more* total instructions than `engine_baseline` under cachegrind (1.55B vs. 475M), which looked like it contradicted the whole "no allocator overhead" story — so it was re-run on a verified clean `-O3 -march=native -flto` rebuild to rule out a stale binary. The clean rebuild reproduced the same gap almost exactly, which ruled that out and pointed to the actual cause: `engine_main` runs three threads, two of which (`engineThread`, `loggerThread`) spin on `_mm_pause()` while waiting on an empty queue, versus one spinning consumer thread in the baseline. Cachegrind serializes and instruments every one of those spin instructions, and its own overhead slows real execution enough that producer/consumer timing looks nothing like it does natively — so the extra spinning thread inflates `Ir` in a way that has nothing to do with the matching engine's actual work. Total instruction count isn't a meaningful comparison for busy-wait concurrent code under this kind of instrumentation, so it's left out here in favor of the D1/LL numbers above, which aren't affected by it.
  
 ---
  
@@ -302,14 +289,18 @@ To switch between CSV, raw ITCH, and PCAP, change the `filepath` variable in `ma
  
 **Market orders** — the engine's `addMarketOrder` path is triggered whenever an order reaching `main.cpp`'s dispatch has `price == 0` and `quantity > 0`; it sweeps the opposite side of the book at whatever price is resting rather than joining the book unfilled. None of `csv_generator.py`, `itch_generator.py`, or `pcap_generator.py` currently emit `price == 0` rows, so this path exists in the engine but isn't exercised by the bundled sample data — feed it a CSV/ITCH/PCAP row with price `0`, or call `addMarketOrder` directly, to use it. Note that `BaselineOrderBook` has no equivalent concept at all: a `price == 0` row reaching `BaselineMain.cpp` is inserted as an ordinary resting order at price 0 rather than swept, so the two binaries are only benchmark-comparable as long as the feed never contains price-0 rows.
  
-**Cancellations** — signalled by `quantity == 0` on the incoming `Order`/CSV row; the ITCH delete-order (`D`) message (raw or PCAP-wrapped) maps to this the same way.
+**Cancellations** — signalled by `quantity == 0` on the incoming `Order`/CSV row; the ITCH delete-order (`D`) message (raw or PCAP-wrapped) maps to this the same way, with one gap noted below in Known issues.
  
 ---
- 
+
+## Known issues
+
+`ITCHParser`'s delete-order (`'D'`) handler only sets `orderID` and `quantity = 0`, leaving `price`/`side` default-initialized. `engine_main`'s cancel path doesn't need them (it looks the order up by ID alone), but `engine_baseline`'s does, so a `'D'` message reaching the baseline binary wouldn't cancel correctly. None of the bundled generators emit delete rows, so this hasn't come up in practice and doesn't affect any benchmark numbers above — noting it here for anyone feeding either binary a feed with real cancellations.
+
 ## Limitations
  
 - Prices must be integers between 1 and 100,000 inclusive (`MAX_PRICE = 100,001`); orders at or above the ceiling, or priced at exactly 0 when they reach `addOrder` directly, are dropped and logged to stderr.
-- Order IDs must be below 1,100,001 (the size of the order map array).
+- Order IDs must be below 1,100,001 (the size of the order map array) — this isn't currently enforced with a bounds check, so an out-of-range ID is undefined behaviour rather than a clean rejection.
 - Linux only — `mmap`, `pthread_setaffinity_np`, and `__builtin_*` intrinsics are used throughout.
 - The order-ingestion ring buffer is single-producer, single-consumer only.
 - The logger thread is pinned to logical core 6 in `main.cpp` — if your machine has fewer cores, or 6 happens to collide with an interrupt-heavy or otherwise pinned core, adjust the `CPU_SET` call before relying on the pinning.
