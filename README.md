@@ -1,29 +1,29 @@
 # NanoMatch — Limit Order Book Engine
-
+ 
 A limit order book written in C++20, built to be as fast as possible. It reads NASDAQ ITCH 5.0 binary feeds, PCAP-captured ITCH/MoldUDP64 multicast traffic, or CSV files, matches limit and market orders by price-time priority, and processes them on a dedicated thread pinned to its own CPU core.
-
+ 
 ---
-
+ 
 ## Headline result
-
+ 
 Ingesting 1,000,000 orders takes **~45.25 ms** natively (**~22M orders/sec**), a
 **~4.7x** speedup over a std::map-based baseline (**~211.75 ms**, ~4.7M orders/sec).
 The engine's per-order matching latency stays flat at **~9.1–9.2 ns** regardless of
 book depth, while the baseline degrades from ~9.8 ns to ~21.1 ns as the book fills up.
-
+ 
 ---
-
+ 
 ## How it works?
-
+ 
 A parser thread (run on logical core 2) reads the feed file and pushes orders into a ring buffer. A separate engine thread (run on logical core 4) drains that buffer and runs the matching logic, thereby implementing an SPSC (**S**ingle **P**roducer **S**ingle **C**onsumer) queue. A third, logger thread (run on logical core 6) drains a second SPSC queue of trade fills and writes them to disk. No two threads ever share a lock; they communicate only through atomic reads and writes on their respective queues.
-
+ 
 ```
 Parser Thread (Core 2)  ── [order ring buffer] ──>  Engine Thread (Core 4) ──> [fill ring buffer] ──> Logger Thread (Core 6)
     reads file                                        matches orders                                    writes fills.csv (buffered
   (mmap, zero-copy)                                 (price-time priority)                                ofstream, off hot path)
                                                     
 ```
-
+ 
 *Note: All three threads are pinned to physical cores such that the parser and engine threads don't share an L2 cache\*, and Core 0 is avoided because the OS routes hardware interrupts there.*
  
 *\* This was verified using the linux command `lscpu -e`*
@@ -107,7 +107,7 @@ Each fixture runs 20 times; p50/p90/p99 are reported.
 | 100,000 levels | 24.3 ns | 25.5 ns | 28.7 ns | 9.68 ns | 10.53 ns | 12.00 ns |
  
 The engine's per-op latency again stays essentially flat (~9.7–10.6 ns p50) regardless of book depth, while the baseline's p50 grows from 12.2 ns to 24.3 ns as the book fills — the same qualitative story as before, on this run's numbers.
-
+ 
 One thing to flag about this table rather than bury: `BM_EngineScaling` times an `addOrder` immediately followed by a `cancelOrder` on every iteration, whereas `BM_BaselineScaling` only times a single `addBid`. So the engine column is two operations, not one, sitting next to a baseline column that's just one. The flat-vs-growing *shape* across book depth is still a fair thing to compare — that's the actual point of the table — but the absolute ns numbers aren't a clean one-op-to-one-op measurement against the baseline column beside them. Worth re-running with a single-op engine fixture (just `addOrder`, timed on its own) if you want numbers that hold up to that level of scrutiny.
  
 ### Other fixtures
@@ -195,20 +195,20 @@ perf script -i perf.data | ../flamegraph/stackcollapse-perf.pl | ../flamegraph/f
 `-DENABLE_PROFILING=ON` adds `-fno-omit-frame-pointer` to the build (see `CMakeLists.txt`), which is what makes `perf`'s stack unwinding trustworthy — without it, frames collapse into a handful of misleading leaves.
  
 ### Cachegrind
-
+ 
 ```bash
 valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 ./engine_main ../data/sample.itch
 valgrind --tool=cachegrind --cache-sim=yes --D1=49152,12,64 --LL=31457280,15,64 ./engine_baseline ../data/sample.itch
 ```
-
+ 
 | Metric | Baseline | Optimized |
 |---|---|---|
 | D1 misses (absolute) | 11,792,974 | 4,585,636 |
 | D1 miss rate | 6.8% | 0.7% |
 | LLd miss rate | 1.3% | 0.4% |
-
+ 
 Cache parameters were set to this machine's real L1d/L3 sizes rather than left at generic defaults. The D1/LL miss-rate columns are the point of this table: the optimized build misses far less per data access, the direct cache-locality payoff of flat price-indexed arrays and pool-allocated, 32-byte-aligned nodes instead of rb-tree/list traversal.
-
+ 
 One metric deliberately left out of this table: raw total instruction count (`Ir`). An earlier run showed `engine_main` executing *more* total instructions than `engine_baseline` under cachegrind (1.55B vs. 475M), which looked like it contradicted the whole "no allocator overhead" story — so it was re-run on a verified clean `-O3 -march=native -flto` rebuild to rule out a stale binary. The clean rebuild reproduced the same gap almost exactly, which ruled that out and pointed to the actual cause: `engine_main` runs three threads, two of which (`engineThread`, `loggerThread`) spin on `_mm_pause()` while waiting on an empty queue, versus one spinning consumer thread in the baseline. Cachegrind serializes and instruments every one of those spin instructions, and its own overhead slows real execution enough that producer/consumer timing looks nothing like it does natively — so the extra spinning thread inflates `Ir` in a way that has nothing to do with the matching engine's actual work. Total instruction count isn't a meaningful comparison for busy-wait concurrent code under this kind of instrumentation, so it's left out here in favor of the D1/LL numbers above, which aren't affected by it.
  
 ---
@@ -284,7 +284,7 @@ To switch between CSV, raw ITCH, and PCAP, change the `filepath` variable in `ma
 **CSV** — one order per line: `orderID,price,quantity,side` (0 = buy, 1 = sell).
  
 **NASDAQ ITCH 5.0** — binary. Handles message types `A` (add order), `F` (add order with attribution), and `D` (delete order). Everything else is skipped.
-
+ 
 **PCAP (Ethernet/IPv4/UDP/MoldUDP64-wrapped ITCH)** — a `.pcap` capture containing NASDAQ TotalView-ITCH messages carried over MoldUDP64 multicast, the way they'd actually arrive off an exchange feed. `PCAPITCHParser` walks each captured packet's classic pcap record header, verifies the Ethernet frame (with optional single 802.1Q VLAN tag), IPv4 header, and UDP header, then unpacks the MoldUDP64 block's message count and hands each embedded ITCH message to the same `ITCHParser::processMessage` used by the raw `.itch` path — so the matching logic downstream is identical regardless of which of the three formats the data arrived in. Non-Ethernet link types, non-IPv4/non-UDP packets, and truncated captures are skipped and counted, not treated as fatal.
  
 **Market orders** — the engine's `addMarketOrder` path is triggered whenever an order reaching `main.cpp`'s dispatch has `price == 0` and `quantity > 0`; it sweeps the opposite side of the book at whatever price is resting rather than joining the book unfilled. None of `csv_generator.py`, `itch_generator.py`, or `pcap_generator.py` currently emit `price == 0` rows, so this path exists in the engine but isn't exercised by the bundled sample data — feed it a CSV/ITCH/PCAP row with price `0`, or call `addMarketOrder` directly, to use it. Note that `BaselineOrderBook` has no equivalent concept at all: a `price == 0` row reaching `BaselineMain.cpp` is inserted as an ordinary resting order at price 0 rather than swept, so the two binaries are only benchmark-comparable as long as the feed never contains price-0 rows.
@@ -292,11 +292,11 @@ To switch between CSV, raw ITCH, and PCAP, change the `filepath` variable in `ma
 **Cancellations** — signalled by `quantity == 0` on the incoming `Order`/CSV row; the ITCH delete-order (`D`) message (raw or PCAP-wrapped) maps to this the same way, with one gap noted below in Known issues.
  
 ---
-
+ 
 ## Known issues
-
+ 
 `ITCHParser`'s delete-order (`'D'`) handler only sets `orderID` and `quantity = 0`, leaving `price`/`side` default-initialized. `engine_main`'s cancel path doesn't need them (it looks the order up by ID alone), but `engine_baseline`'s does, so a `'D'` message reaching the baseline binary wouldn't cancel correctly. None of the bundled generators emit delete rows, so this hasn't come up in practice and doesn't affect any benchmark numbers above — noting it here for anyone feeding either binary a feed with real cancellations.
-
+ 
 ## Limitations
  
 - Prices must be integers between 1 and 100,000 inclusive (`MAX_PRICE = 100,001`); orders at or above the ceiling, or priced at exactly 0 when they reach `addOrder` directly, are dropped and logged to stderr.
