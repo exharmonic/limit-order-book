@@ -164,7 +164,7 @@ At this machine's calibrated ~2.233 GHz TSC, that's roughly 13–29 ns p50 and 8
 
 ![Flame graph of baseline engine showing rb-tree and destructor overhead](docs/baseline_flamegraph.svg "Baseline flame graph — std::map/std::list dominate the call stack")
 
-**Optimized**: The workload is cleanly divided into three distinct columns: `engineThread` (left), `loggerThread` (center), and `parserThread` (right). Crucially, the `engineThread`'s hot path (`LimitOrderBook::addOrder`) is completely flat — there is not a single `malloc`, `free`, or allocator frame present. The heavy STL and I/O overhead (`std::ostream`) is visibly corralled entirely within the `loggerThread`, proving that asynchronous trade reporting never stalls the core matching engine.
+**Optimized**: The workload is cleanly divided into three columns: `main` (parsing, pinned to core 2, left), `engineThread` (center), and `loggerThread` (right). Crucially, the `engineThread`'s hot path (`LimitOrderBook::addOrder`) is completely flat — there is not a single `malloc`, `free`, or allocator frame present. The heavy STL and I/O overhead (`std::ostream`) is visibly corralled entirely within the `loggerThread`, proving that asynchronous trade reporting never stalls the core matching engine.
 
 ![Flame graph of optimized engine showing addOrder and engineThread dominating](docs/optimised_flamegraph.svg "Optimized flame graph — no allocator frames in the hot path")
 
@@ -282,7 +282,7 @@ perf record -F 4000 --call-graph fp -e cpu-clock -g -- ./engine_baseline ../data
 perf script -i perf.data | ../FlameGraph/stackcollapse-perf.pl | ../FlameGraph/flamegraph.pl > ../docs/baseline_flamegraph.svg
 ```
 
-Open the `.svg` files in a browser — they are interactive. The optimized flame graph should show three distinct columns (`engineThread`, `loggerThread`, `parserThread`) with no allocator frames inside `engineThread`. The baseline should show a large destructor tower on the left and `malloc`/`operator new` visible in the matching path on the right.
+Open the `.svg` files in a browser — they are interactive. The optimized flame graph should show three columns (`main`/parsing, `engineThread`, `loggerThread`) with no allocator frames inside `engineThread`. The baseline should show a large destructor tower on the left and `malloc`/`operator new` visible in the matching path on the right.
 
 ---
 
