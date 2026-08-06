@@ -1,5 +1,8 @@
 # NanoMatch — Limit Order Book Engine
 
+*Built as a summer project for "NANOMATCH: Ultra-Low Latency Order Matching Engine," run by the Finance & Economics Club (FEC), IIT Guwahati — Quant Heads: Shubham Rane, Tanishq Kothari.*
+[![Certificate](https://img.shields.io/badge/certificate-verified-brightgreen)](https://verification.givemycertificate.com/v/792bf75f-1f0a-43c0-a8ec-372197a4e6ba)
+
 A limit order book written in C++20, built to be as fast as possible. It reads NASDAQ ITCH 5.0 binary feeds, PCAP-captured ITCH/MoldUDP64 multicast traffic, or CSV files, matches limit and market orders by price-time priority, and processes them on a dedicated thread pinned to its own CPU core.
 
 ---
