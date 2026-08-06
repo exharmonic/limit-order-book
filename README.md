@@ -257,22 +257,29 @@ The `--D1` and `--LL` parameters match this machine's actual L1d/L3 topology (48
 
 ### 6. Flame graphs
 
-Requires `perf` and a one-time clone of Brendan Gregg's FlameGraph toolkit, cloned alongside (not inside) the repo:
+Requires `perf` and a one-time clone of Brendan Gregg's FlameGraph toolkit, cloned **inside** the repo:
 
 ```bash
 git clone https://github.com/brendangregg/FlameGraph.git
 ```
+> **WSL2 note:** `perf` isn't installed by default, and the kernel-specific package Ubuntu normally suggests (`linux-tools-$(uname -r)`) won't exist for WSL2's custom kernel string. Install `linux-tools-generic` instead, then locate and symlink the real binary:
+> ```bash
+> sudo apt install linux-tools-generic
+> find /usr/lib/linux-tools* -name perf
+> sudo ln -sf /usr/lib/linux-tools/<version>-generic/perf /usr/local/bin/perf
+> ```
+> You may also need to relax `perf_event_paranoid` (`echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid`) before `perf record` will run.
 
 Use the same `-DENABLE_PROFILING=ON` build from step 5, then:
 
 ```bash
 cd limit-order-book/build
 
-perf record -F 999 -e cpu-clock -g -- ./engine_main ../data/sample.itch
-perf script -i perf.data | ../../FlameGraph/stackcollapse-perf.pl | ../../FlameGraph/flamegraph.pl > ../docs/optimised_flamegraph.svg
+perf record -F 4000 --call-graph fp -e cpu-clock -g -- ./engine_main ../data/sample.itch
+perf script -i perf.data | ../FlameGraph/stackcollapse-perf.pl | ../FlameGraph/flamegraph.pl > ../docs/optimised_flamegraph.svg
 
-perf record -F 999 -e cpu-clock -g -- ./engine_baseline ../data/sample.itch
-perf script -i perf.data | ../../FlameGraph/stackcollapse-perf.pl | ../../FlameGraph/flamegraph.pl > ../docs/baseline_flamegraph.svg
+perf record -F 4000 --call-graph fp -e cpu-clock -g -- ./engine_baseline ../data/sample.itch
+perf script -i perf.data | ../FlameGraph/stackcollapse-perf.pl | ../FlameGraph/flamegraph.pl > ../docs/baseline_flamegraph.svg
 ```
 
 Open the `.svg` files in a browser — they are interactive. The optimized flame graph should show three distinct columns (`engineThread`, `loggerThread`, `parserThread`) with no allocator frames inside `engineThread`. The baseline should show a large destructor tower on the left and `malloc`/`operator new` visible in the matching path on the right.

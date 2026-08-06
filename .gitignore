@@ -14,3 +14,4 @@ perf.data.old
 out.perf
 out.folded
 flamegraph/
+FlameGraph/
